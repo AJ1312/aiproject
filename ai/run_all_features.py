@@ -114,13 +114,14 @@ def run_gemini_features():
     print()
     
     gemini_features = [
-        ('smart_grade_predictor', 'Smart Grade Predictor'),
-        ('study_optimizer', 'Study Optimizer'),
-        ('semester_insights', 'Semester Insights'),
-        ('study_guide', 'Personalized Study Guide'),
-        ('vtop_coach', 'VTOP Coach & Roaster'),
-        ('performance_insights', 'Performance Insights'),
-        ('career_advisor', 'Career Advisor'),
+        ('smart_marks_predictor', '🎯 Smart Marks & Grade Predictor'),
+        ('study_optimizer', '📚 Study Optimizer'),
+        ('semester_insights', '📊 Semester Insights'),
+        ('study_guide', '📖 Personalized Study Guide'),
+        ('vtop_coach', '🏋️ VTOP Coach & Roaster'),
+        ('performance_insights', '📈 Performance Insights'),
+        ('career_advisor', '💼 Career Advisor'),
+        ('voice_assistant', '🎙️ Voice Assistant'),
     ]
     
     feature_count = 0

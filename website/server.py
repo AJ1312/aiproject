@@ -113,6 +113,86 @@ def status():
     })
 
 
+@app.route('/api/check-login', methods=['GET'])
+def check_login_status():
+    """Check if user is logged in and get registration number"""
+    creds = get_saved_credentials()
+    if creds:
+        return jsonify({
+            'logged_in': True,
+            'regno': creds['regno']
+        })
+    else:
+        return jsonify({
+            'logged_in': False,
+            'message': 'Please login in terminal: ./cli-top login --username X --password Y --regno Z'
+        })
+
+
+@app.route('/api/run-command', methods=['POST'])
+def run_vtop_command():
+    """Run CLI-TOP command (terminal-like interface)"""
+    try:
+        data = request.json
+        command = data.get('command', '').strip()
+        
+        if not command:
+            return jsonify({'success': False, 'error': 'No command provided'})
+        
+        # Check if logged in
+        if not check_credentials():
+            return jsonify({
+                'success': False,
+                'error': 'Not logged in. Please login in terminal first:\n./cli-top login --username X --password Y --regno Z'
+            })
+        
+        # Parse command (e.g., "marks", "cgpa view", "attendance calculator")
+        cmd_parts = command.split()
+        cmd = [str(CLI_TOP_PATH)] + cmd_parts
+        
+        print(f"🔧 Running command: {' '.join(cmd)}")
+        
+        # Commands that require semester selection
+        interactive_commands = ['marks', 'grades', 'attendance', 'da', 'syllabus', 'exams', 'timetable']
+        needs_semester = any(ic in cmd_parts for ic in interactive_commands)
+        
+        # Execute
+        if needs_semester:
+            # Default to latest semester (option 5)
+            result = run_subprocess_safe(
+                cmd,
+                input="5\n",
+                timeout=60,
+                cwd=str(CLI_TOP_PATH.parent)
+            )
+        else:
+            result = run_subprocess_safe(
+                cmd,
+                timeout=60,
+                cwd=str(CLI_TOP_PATH.parent)
+            )
+        
+        output = result.stdout if result.returncode == 0 else result.stderr
+        
+        return jsonify({
+            'success': result.returncode == 0,
+            'output': output,
+            'command': command
+        })
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'success': False,
+            'error': 'Command timed out'
+        })
+    except Exception as e:
+        print(f"❌ Command error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+
 @app.route('/api/setup-ai-context', methods=['POST'])
 def setup_ai_context():
     """Generate AI context from VTOP data"""
@@ -1080,6 +1160,57 @@ def exam_optimizer_api():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/run-all-ai', methods=['GET'])
+def run_all_ai_features():
+    """Run all AI features step by step with progress"""
+    try:
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'ai'))
+        from vtop_data_manager import get_vtop_data
+        
+        # Get data
+        data = get_vtop_data(use_cache=True)
+        
+        results = []
+        
+        # Offline AI Features
+        offline_features = [
+            ('Attendance Optimizer', 'features.attendance_optimizer', 'AttendanceOptimizer', 'analyze_all_courses'),
+            ('CGPA Calculator', 'features.cgpa_calculator', 'CGPACalculator', 'calculate_what_if_scenarios'),
+            ('Exam Schedule Optimizer', 'features.exam_schedule_optimizer', 'ExamScheduleOptimizer', 'optimize_study_schedule'),
+            ('Smart Marks Predictor', 'features.smart_marks_predictor', 'SmartMarksPredictor', 'predict_marks_and_grades'),
+        ]
+        
+        for name, module_name, class_name, method_name in offline_features:
+            try:
+                module = __import__(module_name, fromlist=[class_name])
+                cls = getattr(module, class_name)
+                instance = cls(data)
+                result = getattr(instance, method_name)()
+                
+                results.append({
+                    'feature': name,
+                    'status': 'success',
+                    'data': result
+                })
+            except Exception as e:
+                results.append({
+                    'feature': name,
+                    'status': 'error',
+                    'error': str(e)
+                })
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'total_features': len(results)
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 if __name__ == '__main__':

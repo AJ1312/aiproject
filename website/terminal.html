@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLI-TOP Terminal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .terminal-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #0a0a0a;
+            border: 2px solid #0f0;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #0f0;
+        }
+
+        .terminal-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
+        }
+
+        .status {
+            font-size: 14px;
+            padding: 5px 15px;
+            border-radius: 4px;
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .status.logged-in {
+            color: #0f0;
+        }
+
+        .status.not-logged-in {
+            color: #f00;
+            background: rgba(255, 0, 0, 0.1);
+        }
+
+        .output-area {
+            background: #000;
+            border: 1px solid #0f0;
+            border-radius: 4px;
+            padding: 15px;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .output-line {
+            margin: 5px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .output-line.command {
+            color: #00f;
+        }
+
+        .output-line.success {
+            color: #0f0;
+        }
+
+        .output-line.error {
+            color: #f00;
+        }
+
+        .output-line.info {
+            color: #ff0;
+        }
+
+        .input-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .prompt {
+            color: #0f0;
+            font-weight: bold;
+        }
+
+        .command-input {
+            flex: 1;
+            background: #000;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .command-input:focus {
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .run-button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .run-button:hover {
+            background: #0d0;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+        }
+
+        .run-button:disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .help-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid #0f0;
+            border-radius: 4px;
+        }
+
+        .help-title {
+            color: #0f0;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .help-commands {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .help-command {
+            color: #0a0;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        .help-command:hover {
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .ai-features-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 200, 255, 0.05);
+            border: 1px solid #0af;
+            border-radius: 4px;
+        }
+
+        .ai-features-section .help-title {
+            color: #0af;
+        }
+
+        .ai-command {
+            color: #0af;
+        }
+
+        .loading {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #0f0;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0d0;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div class="terminal-title">CLI-TOP TERMINAL</div>
+            <div class="status" id="loginStatus">Checking...</div>
+        </div>
+
+        <div class="output-area" id="output"></div>
+
+        <div class="input-area">
+            <span class="prompt">$</span>
+            <input 
+                type="text" 
+                class="command-input" 
+                id="commandInput" 
+                placeholder="Enter command (type 'help' for available commands)"
+                autocomplete="off"
+            />
+            <button class="run-button" id="runButton">RUN</button>
+        </div>
+
+        <div class="help-section">
+            <div class="help-title">📚 VTOP COMMANDS</div>
+            <div class="help-commands">
+                <div class="help-command" data-cmd="marks">marks - View current marks</div>
+                <div class="help-command" data-cmd="cgpa view">cgpa view - View CGPA history</div>
+                <div class="help-command" data-cmd="attendance">attendance - Check attendance</div>
+                <div class="help-command" data-cmd="timetable">timetable - View timetable</div>
+                <div class="help-command" data-cmd="exams">exams - Exam schedule</div>
+                <div class="help-command" data-cmd="profile">profile - View profile</div>
+                <div class="help-command" data-cmd="grades view">grades view - All grades</div>
+                <div class="help-command" data-cmd="da">da - Digital Assignments</div>
+            </div>
+        </div>
+
+        <div class="ai-features-section">
+            <div class="help-title">🤖 AI FEATURES</div>
+            <div class="help-commands">
+                <div class="help-command ai-command" data-cmd="ai-all">ai-all - Run all AI features</div>
+                <div class="help-command ai-command" data-cmd="ai-attendance">ai-attendance - Attendance optimizer</div>
+                <div class="help-command ai-command" data-cmd="ai-cgpa">ai-cgpa - CGPA calculator</div>
+                <div class="help-command ai-command" data-cmd="ai-exam">ai-exam - Exam scheduler</div>
+                <div class="help-command ai-command" data-cmd="ai-predict">ai-predict - Smart grade predictor</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const output = document.getElementById('output');
+        const commandInput = document.getElementById('commandInput');
+        const runButton = document.getElementById('runButton');
+        const loginStatus = document.getElementById('loginStatus');
+
+        let isLoggedIn = false;
+        let regno = '';
+
+        // Check login status on load
+        async function checkLogin() {
+            try {
+                const response = await fetch('/api/check-login');
+                const data = await response.json();
+                
+                isLoggedIn = data.logged_in;
+                
+                if (data.logged_in) {
+                    regno = data.regno;
+                    loginStatus.className = 'status logged-in';
+                    loginStatus.textContent = `Logged in as ${data.regno}`;
+                    addOutput('System initialized successfully', 'success');
+                    addOutput(`Welcome back, ${data.regno}!`, 'info');
+                    addOutput('Type "help" for available commands or click any command below', 'info');
+                } else {
+                    loginStatus.className = 'status not-logged-in';
+                    loginStatus.textContent = 'Not logged in';
+                    addOutput('Not logged in', 'error');
+                    addOutput(data.message, 'info');
+                }
+            } catch (error) {
+                loginStatus.className = 'status not-logged-in';
+                loginStatus.textContent = 'Connection error';
+                addOutput('Failed to check login status', 'error');
+            }
+        }
+
+        // Add output line
+        function addOutput(text, type = 'normal') {
+            const line = document.createElement('div');
+            line.className = `output-line ${type}`;
+            line.textContent = text;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Run command
+        async function runCommand(command) {
+            if (!command.trim()) return;
+
+            addOutput(`$ ${command}`, 'command');
+
+            if (command === 'help') {
+                showHelp();
+                return;
+            }
+
+            if (command === 'clear') {
+                output.innerHTML = '';
+                return;
+            }
+
+            // Handle AI commands
+            if (command.startsWith('ai-')) {
+                await runAICommand(command);
+                return;
+            }
+
+            // Run VTOP command
+            if (!isLoggedIn) {
+                addOutput('Error: Not logged in', 'error');
+                addOutput('Please login in terminal first: ./cli-top login --username X --password Y --regno Z', 'info');
+                return;
+            }
+
+            addOutput('Running...', 'loading');
+            runButton.disabled = true;
+
+            try {
+                const response = await fetch('/api/run-command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command })
+                });
+
+                const data = await response.json();
+
+                // Remove loading line
+                output.lastChild.remove();
+
+                if (data.success) {
+                    const lines = data.output.split('\n');
+                    lines.forEach(line => {
+                        if (line.trim()) addOutput(line, 'success');
+                    });
+                } else {
+                    addOutput(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                output.lastChild.remove();
+                addOutput(`Error: ${error.message}`, 'error');
+            } finally {
+                runButton.disabled = false;
+            }
+        }
+
+        // Run AI command
+        async function runAICommand(command) {
+            addOutput('Running AI feature...', 'loading');
+            runButton.disabled = true;
+
+            try {
+                let endpoint = '';
+                
+                switch(command) {
+                    case 'ai-all':
+                        endpoint = '/api/run-all-ai';
+                        break;
+                    case 'ai-attendance':
+                        endpoint = '/api/offline-ai/attendance-optimizer';
+                        break;
+                    case 'ai-cgpa':
+                        endpoint = '/api/offline-ai/cgpa-calculator';
+                        break;
+                    case 'ai-exam':
+                        endpoint = '/api/offline-ai/exam-optimizer';
+                        break;
+                    case 'ai-predict':
+                        endpoint = '/api/smart-grade-predictor';
+                        break;
+                    default:
+                        addOutput('Unknown AI command', 'error');
+                        output.lastChild.remove();
+                        runButton.disabled = false;
+                        return;
+                }
+
+                const response = await fetch(endpoint, {
+                    method: command === 'ai-all' ? 'GET' : 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                output.lastChild.remove();
+
+                if (data.success) {
+                    if (data.results) {
+                        // Multiple features
+                        data.results.forEach(result => {
+                            addOutput(`\n=== ${result.feature} ===`, 'info');
+                            if (result.status === 'success') {
+                                addOutput(JSON.stringify(result.data, null, 2), 'success');
+                            } else {
+                                addOutput(`Error: ${result.error}`, 'error');
+                            }
+                        });
+                    } else if (data.output) {
+                        // Single feature with formatted output
+                        if (data.output.content) {
+                            const lines = data.output.content.split('\n');
+                            lines.forEach(line => {
+                                if (line.trim()) addOutput(line, 'success');
+                            });
+                        } else {
+                            addOutput(JSON.stringify(data, null, 2), 'success');
+                        }
+                    } else {
+                        addOutput(JSON.stringify(data, null, 2), 'success');
+                    }
+                } else {
+                    addOutput(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                output.lastChild.remove();
+                addOutput(`Error: ${error.message}`, 'error');
+            } finally {
+                runButton.disabled = false;
+            }
+        }
+
+        // Show help
+        function showHelp() {
+            addOutput('\nAvailable commands:', 'info');
+            addOutput('  help              - Show this help', 'success');
+            addOutput('  clear             - Clear terminal', 'success');
+            addOutput('  marks             - View current marks', 'success');
+            addOutput('  cgpa view         - View CGPA history', 'success');
+            addOutput('  attendance        - Check attendance', 'success');
+            addOutput('  timetable         - View timetable', 'success');
+            addOutput('  exams             - Exam schedule', 'success');
+            addOutput('  profile           - View profile', 'success');
+            addOutput('\nAI Commands:', 'info');
+            addOutput('  ai-all            - Run all AI features', 'success');
+            addOutput('  ai-attendance     - Attendance optimizer', 'success');
+            addOutput('  ai-cgpa           - CGPA calculator', 'success');
+            addOutput('  ai-exam           - Exam scheduler', 'success');
+            addOutput('  ai-predict        - Smart grade predictor (uses Gemini)', 'success');
+            addOutput('');
+        }
+
+        // Event listeners
+        runButton.addEventListener('click', () => {
+            const command = commandInput.value.trim();
+            if (command) {
+                runCommand(command);
+                commandInput.value = '';
+            }
+        });
+
+        commandInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const command = commandInput.value.trim();
+                if (command) {
+                    runCommand(command);
+                    commandInput.value = '';
+                }
+            }
+        });
+
+        // Click on help commands to auto-fill
+        document.querySelectorAll('.help-command').forEach(cmd => {
+            cmd.addEventListener('click', () => {
+                const command = cmd.getAttribute('data-cmd');
+                commandInput.value = command;
+                commandInput.focus();
+            });
+        });
+
+        // Initialize
+        checkLogin();
+    </script>
+</body>
+</html>
