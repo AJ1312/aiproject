@@ -54,9 +54,6 @@ def run_subprocess_safe(cmd, **kwargs):
     
     return subprocess.run(cmd, **kwargs)
 
-# Auto-login flag - set to True to use stored credentials
-AUTO_LOGIN = os.path.exists(CLI_TOP_CONFIG) and os.path.getsize(CLI_TOP_CONFIG) > 100
-
 # Store session credentials temporarily
 sessions = {}
 
@@ -69,14 +66,30 @@ def check_credentials():
     try:
         with open(CLI_TOP_CONFIG, 'r') as f:
             content = f.read()
-            # Check if REGNO and VTOP_USERNAME have values
-            if 'REGNO=""' in content or 'VTOP_USERNAME=""' in content:
-                return False
-            if 'REGNO=' not in content or 'VTOP_USERNAME=' not in content:
-                return False
-            return True
+            # Check if any session data exists (UUID, CSRF, etc.)
+            # A successful login will have UUID populated
+            has_uuid = False
+            has_csrf = False
+            
+            for line in content.split('\n'):
+                if line.startswith('UUID=') and '=' in line:
+                    value = line.split('=', 1)[1].strip()
+                    # UUID should be a non-empty value
+                    if value and len(value) > 10:
+                        has_uuid = True
+                if line.startswith('CSRF=') and '=' in line:
+                    value = line.split('=', 1)[1].strip().strip('"')
+                    # CSRF should be a non-empty UUID-like value
+                    if value and len(value) > 10:
+                        has_csrf = True
+            
+            # Valid credentials should have both UUID and CSRF
+            return has_uuid and has_csrf
     except:
         return False
+
+# Auto-login flag - based on credential check
+AUTO_LOGIN = check_credentials()
 
 def check_ai_context():
     """Check if AI context (current_semester_data.json) exists"""
