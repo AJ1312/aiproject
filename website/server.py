@@ -11,6 +11,7 @@ import subprocess
 import json
 import os
 import sys
+import time
 from pathlib import Path
 import tempfile
 import re
@@ -195,26 +196,24 @@ def login():
         if not username or not password:
             return jsonify({'error': 'Username and password required'}), 400
         
-        # Use stdin to provide credentials to CLI-TOP
+        # Use CLI-TOP login command to save credentials
         print(f"🔐 Attempting login for user: {username}")
         
-        # Test login with profile command - this will create the config file
+        # Use the login command with flags - this will save credentials to config
         try:
-            # Provide username and password via stdin
-            input_data = f"{username}\n{password}\n"
-            
             result = run_subprocess_safe(
-                [str(CLI_TOP_PATH), 'profile'],
-                input=input_data,
+                [str(CLI_TOP_PATH), 'login', '--username', username, '--password', password, '--regno', username],
                 timeout=45
             )
             
             if result.returncode == 0:
-                # Check if config file was created
-                if not check_credentials():
-                    return jsonify({'error': 'Login succeeded but credentials not saved'}), 500
+                # Verify credentials were saved
+                time.sleep(1)  # Give it a moment to write the file
                 
-                # Success
+                if not check_credentials():
+                    return jsonify({'error': 'Login succeeded but credentials not saved. Please check file permissions.'}), 500
+                
+                # Success - credentials saved to config file
                 session_id = os.urandom(16).hex()
                 sessions[session_id] = {'username': username}
                 
