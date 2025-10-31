@@ -996,6 +996,92 @@ def format_cli_output(output):
     }
 
 
+@app.route('/api/offline-ai/attendance-optimizer', methods=['POST'])
+def attendance_optimizer_api():
+    """Run attendance optimizer"""
+    try:
+        # Import AI feature
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'ai'))
+        from features.attendance_optimizer import AttendanceOptimizer
+        from vtop_data_manager import get_vtop_data
+        
+        # Get data
+        data = get_vtop_data(use_cache=True)
+        
+        # Run optimizer
+        optimizer = AttendanceOptimizer(data)
+        results = optimizer.analyze_all_courses()
+        
+        return jsonify({
+            'success': True,
+            'results': results
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/offline-ai/cgpa-calculator', methods=['POST'])
+def cgpa_calculator_api():
+    """Run CGPA calculator"""
+    try:
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'ai'))
+        from features.cgpa_calculator import CGPACalculator
+        from vtop_data_manager import get_vtop_data
+        
+        data = get_vtop_data(use_cache=True)
+        calculator = CGPACalculator(data)
+        
+        # Get what-if params
+        request_data = request.json or {}
+        target_cgpa = request_data.get('target_cgpa', 9.0)
+        remaining_semesters = request_data.get('remaining_semesters', 2)
+        
+        # Calculate predictions
+        prediction = calculator.predict_current_semester()
+        scenario = calculator.what_if_scenario(target_cgpa, remaining_semesters)
+        distribution = calculator.grade_distribution_analysis()
+        
+        return jsonify({
+            'success': True,
+            'prediction': prediction,
+            'scenario': scenario,
+            'distribution': distribution,
+            'current_cgpa': calculator.current_cgpa
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/offline-ai/exam-optimizer', methods=['POST'])
+def exam_optimizer_api():
+    """Run exam schedule optimizer"""
+    try:
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'ai'))
+        from features.exam_schedule_optimizer import ExamScheduleOptimizer
+        from vtop_data_manager import get_vtop_data
+        
+        data = get_vtop_data(use_cache=True)
+        optimizer = ExamScheduleOptimizer(data)
+        
+        # Get total study hours from request
+        request_data = request.json or {}
+        total_hours = request_data.get('total_hours', 100)
+        
+        # Generate study plan
+        study_plan = optimizer.optimize_study_allocation(total_hours)
+        gaps = optimizer.calculate_exam_gaps()
+        crunch = optimizer.identify_crunch_periods()
+        
+        return jsonify({
+            'success': True,
+            'study_plan': study_plan,
+            'exam_gaps': gaps,
+            'crunch_periods': crunch
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     print("="*60)
     print("🚀 Better VTOP Backend Server")
