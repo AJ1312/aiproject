@@ -188,7 +188,14 @@ body {
 .card p { margin-bottom: 1rem; line-height: 1.5; }
 .card-special { background: var(--yellow); }
 .card-gemini { background: var(--white); }
-.card-fun { background: var(--orange); }
+.card-fun { 
+    background: var(--red); 
+    color: var(--white);
+}
+.card-fun .card-icon { font-size: 4rem; }
+.card-fun h3, .card-fun p { color: var(--white); }
+.card-fun .list li { color: var(--white); }
+.card-fun .list li::before { color: var(--yellow); }
 
 .list {
     list-style: none;
@@ -336,7 +343,7 @@ body {
     flex: 1;
     overflow-y: auto;
     padding: 1.5rem;
-    background: #f5f5f5;
+    background: #1a1a1a;
 }
 
 .chat-message {
@@ -349,13 +356,18 @@ body {
 }
 
 .chat-message.user {
-    background: var(--cyan);
+    background: var(--green);
+    color: var(--black);
     margin-left: 3rem;
+    border-color: var(--black);
+    font-weight: 600;
 }
 
 .chat-message.bot {
     background: var(--white);
+    color: var(--black);
     margin-right: 3rem;
+    border-color: var(--cyan);
 }
 
 .chat-message.error {
@@ -364,13 +376,22 @@ body {
 }
 
 .chat-message.loading {
-    background: var(--yellow);
+    /* use stronger accent so yellow text is readable */
+    background: var(--orange);
+    color: var(--black);
+    font-weight: 600;
 }
 
 .chat-message strong {
     display: block;
     margin-bottom: 0.5rem;
     font-size: 0.9rem;
+}
+
+.chat-message .message-content strong {
+    display: inline;
+    font-weight: 900;
+    color: var(--black);
 }
 
 .typing {
@@ -408,6 +429,25 @@ body {
 .chat-input-container .btn-exec {
     margin: 0;
     white-space: nowrap;
+}
+
+/* Card icon / emoji rendering: prefer platform emoji fonts as fallback */
+.card-icon, .emoji {
+    /* ensure color emoji fonts are tried first, then fallback to monospace */
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", 'Space Mono', monospace;
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+/* Voice mode panel: use darker background for the yellow areas to increase contrast */
+.panel-body.voice-mode {
+    background: #fff9e6; /* slightly off-white with warm tint */
+    color: #111;
+}
+
+/* Accessibility: make sure gemini cards have visible icons */
+.card.card-gemini .card-icon {
+    font-size: 2.2rem;
 }
 
 /* VOICE ASSISTANT */
@@ -547,6 +587,14 @@ body {
     border: 3px solid var(--black);
     overflow-x: auto;
     white-space: pre-wrap;
+}
+
+.response-content strong,
+.chat-message pre strong {
+    font-weight: 900;
+    color: var(--black);
+    background: var(--yellow);
+    padding: 0.1rem 0.3rem;
 }
 
 .response-content .error {

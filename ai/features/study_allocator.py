@@ -162,7 +162,7 @@ def generate_study_plan(allocations: List[Dict]) -> List[str]:
     recommendations = []
     
     for alloc in allocations:
-        course = alloc["course_code"]
+        course = alloc.get("course_name", alloc["course_code"])
         urgency = alloc["urgency"]
         weekly = alloc["allocated_hours"]
         daily = alloc["daily_hours"]
@@ -211,7 +211,7 @@ def run_study_allocator(vtop_data: Dict, total_hours: int = 40) -> List[Dict]:
     courses = []
     for mark in marks:
         course_code = mark.get("course_code", "")
-        course_name = mark.get("course_title", "")
+        course_name = mark.get("course_name", mark.get("course_title", ""))
         current_score = mark.get("total_scored", 0.0)
         
         # Find attendance for this course
@@ -261,7 +261,13 @@ def run_study_allocator(vtop_data: Dict, total_hours: int = 40) -> List[Dict]:
             f"  • Credits: {alloc['factors']['credit_component']}"
         ]
         
-        print_box(f"{icon} {alloc['course_code']}", lines)
+        # Display full course name with code in parentheses
+        display_name = alloc.get('course_name', alloc['course_code'])
+        if display_name and display_name != alloc['course_code']:
+            header = f"{icon} {display_name} ({alloc['course_code']})"
+        else:
+            header = f"{icon} {alloc['course_code']}"
+        print_box(header, lines)
         print()
     
     # Generate and display recommendations

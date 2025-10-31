@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"cli-top/debug"
+	"cli-top/login"
 	"fmt"
 	"strings"
 
@@ -29,16 +30,37 @@ var credCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Logging in with username: %s\n", strings.ToUpper(username))
+
+		// Perform actual login to get cookies
+		fmt.Println("Connecting to VTOP...")
+		loginSecrets := login.Login(strings.ToUpper(username), password)
+		cookies, regNo := login.HomePage(loginSecrets)
+
+		if regNo == "" {
+			fmt.Println("Login failed. Please check your credentials and try again.")
+			if debug.Debug {
+				fmt.Printf("Cookies received: %+v\n", cookies)
+			}
+			return
+		}
+
+		fmt.Printf("✅ Login successful! Registration Number: %s\n", regNo)
+
+		// Save all credentials and cookies
 		viper.Set("VTOP_USERNAME", "\""+strings.ToUpper(username)+"\"")
 		viper.Set("PASSWORD", "\""+encryptedPassword+"\"")
 		viper.Set("KEY", "\""+key+"\"")
+		viper.Set("CSRF", "\""+cookies.CSRF+"\"")
+		viper.Set("JSESSIONID", "\""+cookies.JSESSIONID+"\"")
+		viper.Set("SERVERID", "\""+cookies.SERVERID+"\"")
+		viper.Set("REGNO", "\""+regNo+"\"")
 
 		if err := viper.WriteConfigAs("cli-top-config.env"); err != nil && debug.Debug {
 			fmt.Println("Error writing to .env file:", err)
 			return
 		}
 
-		fmt.Println("Username and encrypted password stored in .env file successfully.")
+		fmt.Println("Credentials and session saved successfully.")
 	},
 }
 

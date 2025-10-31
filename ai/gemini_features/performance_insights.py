@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Performance Insights - Deep analysis of academic performance using Gemini
+Performance Insights - Deep analysis of academic performance using Advanced AI
 """
 
 import json
@@ -16,6 +16,8 @@ except ImportError:
     print("❌ Error: google-generativeai not installed")
     print("   Run: pip install -r ai/requirements.txt")
     sys.exit(1)
+
+from utils.formatters import clean_gemini_output
 
 def analyze_performance(vtop_data):
     """Generate comprehensive performance analysis"""
@@ -96,7 +98,7 @@ Be honest but encouraging. Provide specific, actionable insights with numbers an
     
     try:
         response = model.generate_content(prompt)
-        return response.text
+        return clean_gemini_output(response.text)
     except Exception as e:
         return f"❌ Error: {str(e)}"
 

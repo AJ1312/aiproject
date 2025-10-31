@@ -12,8 +12,8 @@
 <body>
     <!-- Header -->
     <header class="hero">
-        <div class="session-indicator logged-in">
-            <span>AUTO-LOGIN ACTIVE ✓</span>
+        <div id="sessionIndicator" class="session-indicator">
+            <span id="sessionStatus">Checking...</span>
         </div>
         
         <div class="container">
@@ -21,7 +21,7 @@
                 <span class="gradient-text">BETTER VTOP</span>
                 <span class="subtitle">Your Academic Companion</span>
             </h1>
-            <p class="hero-desc">CLI-TOP + AI Features + Gemini Insights</p>
+            <p class="hero-desc">CLI-TOP + AI Features + Advanced AI Insights</p>
             
             <div class="hero-stats">
                 <div class="stat-box">
@@ -34,7 +34,7 @@
                 </div>
                 <div class="stat-box">
                     <div class="stat-num">6</div>
-                    <div class="stat-label">GEMINI AI 🎙️</div>
+                    <div class="stat-label">ADVANCED AI 🎙️</div>
                 </div>
             </div>
         </div>
@@ -50,7 +50,7 @@
     <nav class="nav">
         <a href="#vtop">VTOP</a>
         <a href="#ai">AI</a>
-        <a href="#gemini">GEMINI</a>
+        <a href="#gemini">ADVANCED AI</a>
     </nav>
 
     <!-- VTOP Features -->
@@ -117,7 +117,7 @@
                 </div>
                 
                 <div class="card" data-type="vtop" data-cmd="library-dues">
-                    <div class="card-icon">�</div>
+                    <div class="card-icon">📚</div>
                     <h3>Library</h3>
                     <p>Library dues</p>
                     <button class="btn-exec">Execute</button>
@@ -227,11 +227,11 @@
         </div>
     </section>
 
-    <!-- Gemini Features (CLOUD AI) -->
+    <!-- Advanced AI Features (CLOUD AI) -->
     <section id="gemini" class="section section-gemini">
         <div class="container">
-            <h2 class="section-title">✨ GEMINI AI</h2>
-            <p class="section-subtitle">Google Gemini 2.5 Flash • Natural Language</p>
+            <h2 class="section-title">✨ ADVANCED AI</h2>
+            <p class="section-subtitle">Powered by Gemma LLM • Natural Language</p>
             
             <div class="grid grid-gemini">
                 <div class="card card-gemini" data-type="gemini" data-feature="chatbot">
@@ -271,7 +271,7 @@
                 </div>
                 
                 <div class="card card-gemini" data-type="gemini" data-feature="study-plan">
-                    <div class="card-icon">�</div>
+                    <div class="card-icon">📅</div>
                     <h3>Study Plan</h3>
                     <p>Personalized study schedule</p>
                     <ul class="list">
@@ -283,7 +283,7 @@
                 </div>
                 
                 <div class="card card-gemini" data-type="gemini" data-feature="study-guide">
-                    <div class="card-icon">�</div>
+                    <div class="card-icon">📖</div>
                     <h3>Study Guide</h3>
                     <p>Topic-wise study materials</p>
                     <ul class="list">
@@ -305,6 +305,18 @@
                     </ul>
                     <button class="btn-exec">Launch Voice</button>
                 </div>
+                
+                <div class="card card-gemini card-fun" data-type="gemini" data-feature="roast">
+                    <div class="card-icon">🔥</div>
+                    <h3>Roast Me</h3>
+                    <p>SAVAGE academic roast 💀</p>
+                    <ul class="list">
+                        <li>Brutally honest feedback</li>
+                        <li>Dark humor included</li>
+                        <li>No mercy given</li>
+                    </ul>
+                    <button class="btn-exec">I DARE YOU 💀🔥</button>
+                </div>
             </div>
         </div>
     </section>
@@ -320,6 +332,70 @@
                 <div class="loading">
                     <div class="spinner"></div>
                     <p>Executing...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Wizard Modal -->
+    <div id="setupWizard" class="modal" style="display: none;">
+        <div class="panel" style="max-width: 600px;">
+            <div class="panel-head">
+                <h2>🚀 Welcome to CLI-TOP AI</h2>
+            </div>
+            <div class="panel-body" id="setupBody">
+                <div id="setupStep1" class="setup-step">
+                    <h3>⚠️ Setup Required</h3>
+                    <p>Before using AI features, we need to set up your account:</p>
+                    <ol style="text-align: left; margin: 20px; line-height: 1.8;">
+                        <li><strong>Login to VTOP:</strong> Enter your credentials below</li>
+                        <li><strong>Generate AI Context:</strong> We'll personalize the AI with your data</li>
+                        <li><strong>Start Using Features:</strong> Access all VTOP + AI features</li>
+                    </ol>
+                    
+                    <div style="margin-top: 30px;">
+                        <h4>VTOP Login</h4>
+                        <input type="text" id="setupUsername" placeholder="VTOP Username" 
+                               style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
+                        <input type="password" id="setupPassword" placeholder="VTOP Password" 
+                               style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
+                        <button onclick="setupLogin()" class="btn-exec" 
+                                style="width: 100%; margin-top: 10px; background: #007bff;">
+                            Continue to Setup →
+                        </button>
+                        <p id="setupError" style="color: red; margin-top: 10px; display: none;"></p>
+                    </div>
+                </div>
+                
+                <div id="setupStep2" class="setup-step" style="display: none;">
+                    <h3>🤖 Personalizing Your AI</h3>
+                    <p>We're fetching your VTOP data and creating a personalized AI context...</p>
+                    <div class="loading" style="margin: 30px 0;">
+                        <div class="spinner"></div>
+                        <p>Generating AI context...</p>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">
+                        This will export your marks, attendance, exams, and profile data.<br>
+                        Everything stays local on your machine.
+                    </p>
+                </div>
+                
+                <div id="setupStep3" class="setup-step" style="display: none;">
+                    <h3>✅ Setup Complete!</h3>
+                    <p>Your AI assistant is ready to help you succeed academically!</p>
+                    <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: left;">
+                        <strong>What's Next:</strong>
+                        <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+                            <li>View your VTOP data (marks, attendance, etc.)</li>
+                            <li>Run AI features (grade predictor, attendance planner)</li>
+                            <li>Chat with your personalized AI assistant</li>
+                            <li>Get career advice and study plans</li>
+                        </ul>
+                    </div>
+                    <button onclick="closeSetup()" class="btn-exec" 
+                            style="width: 100%; background: #28a745;">
+                        🎉 Let's Go!
+                    </button>
                 </div>
             </div>
         </div>

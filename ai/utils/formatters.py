@@ -1,4 +1,5 @@
 """Output formatting utilities for non-API features."""
+import re
 
 
 def print_header(text: str) -> None:
@@ -43,6 +44,36 @@ def print_box(title: str, lines: list) -> None:
     print(f"╚{border}╝")
 
 
+def clean_gemini_output(text: str) -> str:
+    """Sanitize Gemini/LLM text output:
+
+    - Replace long runs of asterisks (***, ****, ...) with a single em-dash divider
+    - Remove lines that consist only of separators (asterisks, dashes, underscores)
+    - Collapse repeated divider lines
+    - Trim leading/trailing whitespace
+    """
+    if not text:
+        return text
+
+    # Replace sequences of 3+ asterisks with a single em-dash marker
+    text = re.sub(r"\*{3,}", "—", text)
+
+    # Remove lines that are only separators like --- or *** or ___ (2 or more)
+    lines = [ln for ln in text.splitlines() if not re.match(r"^\s*([*_\-]){2,}\s*$", ln)]
+
+    # Collapse consecutive em-dash-only lines
+    cleaned = []
+    prev_div = False
+    for ln in lines:
+        is_div = bool(re.match(r"^\s*—+\s*$", ln))
+        if is_div and prev_div:
+            continue
+        cleaned.append(ln)
+        prev_div = is_div
+
+    return "\n".join(cleaned).strip()
+
+
 __all__ = [
     "print_header",
     "print_section",
@@ -50,4 +81,5 @@ __all__ = [
     "format_percentage",
     "format_table_row",
     "print_box",
+    "clean_gemini_output",
 ]

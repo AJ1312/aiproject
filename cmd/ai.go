@@ -280,7 +280,7 @@ Requires: Gemini API key configured in ai/.env`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fetch, _ := cmd.Flags().GetBool("fetch")
 		question, _ := cmd.Flags().GetString("question")
-		
+
 		aiDir := resolveAIFeaturesDir()
 		scriptPath := filepath.Join(aiDir, "chatbot.py")
 

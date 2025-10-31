@@ -18,6 +18,8 @@ except ImportError:
     print("   Run: pip install -r ai/requirements.txt")
     sys.exit(1)
 
+from utils.formatters import clean_gemini_output
+
 def generate_study_plan(vtop_data, days_until_exams=30, daily_hours=6):
     """Generate optimized study plan"""
     
@@ -73,7 +75,7 @@ Be practical, specific, and time-bound. Consider the student's current performan
     
     try:
         response = model.generate_content(prompt)
-        return response.text
+        return clean_gemini_output(response.text)
     except Exception as e:
         return f"❌ Error: {str(e)}"
 

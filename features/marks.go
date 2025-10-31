@@ -5,7 +5,6 @@ import (
 	"cli-top/debug"
 	"cli-top/helpers"
 	"cli-top/types"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -31,106 +30,6 @@ const (
 	CourseFacultyCellIndex      = 6
 	CourseSlotCellIndex         = 7
 )
-
-// FetchMarksSummary retrieves marks data for the latest available semester without printing to stdout.
-func FetchMarksSummary(regNo string, cookies types.Cookies) ([]types.CourseMarksSummary, error) {
-	if !helpers.ValidateLogin(cookies) {
-		return nil, errors.New("invalid login session")
-	}
-
-	semesters, err := helpers.GetSemDetails(cookies, regNo)
-	if err != nil {
-		return nil, err
-	}
-	if len(semesters) == 0 {
-		return nil, errors.New("no semesters available")
-	}
-
-	// Use the LAST semester (most recent/current) instead of first (oldest)
-	selectedSem := semesters[len(semesters)-1]
-	url := "https://vtop.vit.ac.in/vtop/examinations/doStudentMarkView"
-
-	payload := fmt.Sprintf(
-		"------WebKitFormBoundary9yjNZXu7BBjgQK7J\r\nContent-Disposition: form-data; name=\"authorizedID\"\r\n\r\n%s\r\n------WebKitFormBoundary9yjNZXu7BBjgQK7J\r\nContent-Disposition: form-data; name=\"semesterSubId\"\r\n\r\n%s\r\n------WebKitFormBoundary9yjNZXu7BBjgQK7J\r\nContent-Disposition: form-data; name=\"_csrf\"\r\n\r\n%s\r\n------WebKitFormBoundary9yjNZXu7BBjgQK7J--\r\n",
-		regNo,
-		selectedSem.SemID,
-		cookies.CSRF,
-	)
-
-	bodyText, err := helpers.FetchReq(regNo, cookies, url, selectedSem.SemID, payload, "POST", "marks")
-	if err != nil {
-		return nil, err
-	}
-
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(bodyText))
-	if err != nil {
-		return nil, err
-	}
-
-	courseDetails := subjectDetails(doc)
-	elements := findElementsByClass(doc, MarksCustomTableSelector)
-	var summaries []types.CourseMarksSummary
-
-	cleanNumber := func(s string) string {
-		s = strings.TrimSpace(s)
-		s = strings.TrimSuffix(s, "%")
-		s = strings.ReplaceAll(s, "%", "")
-		s = strings.ReplaceAll(s, ",", "")
-		return strings.TrimSpace(s)
-	}
-
-	for idx, course := range courseDetails {
-		if idx >= len(elements) {
-			continue
-		}
-		componentRows, _, _ := ExtractMarks(elements[idx])
-		var components []types.CourseMarksComponent
-		var totalWeight float64
-		var totalScored float64
-
-		for _, row := range componentRows {
-			if len(row) < 6 {
-				continue
-			}
-			component := types.CourseMarksComponent{
-				Title:  strings.TrimSpace(row[MarksTitleCellIndex-1]),
-				Status: strings.TrimSpace(row[MarksStatusCellIndex-1]),
-			}
-
-			if maxMarks, err := strconv.ParseFloat(cleanNumber(row[MarksMaxMarkCellIndex-1]), 64); err == nil {
-				component.MaxMarks = maxMarks
-			}
-			if weightage, err := strconv.ParseFloat(cleanNumber(row[MarksWeightageCellIndex-1]), 64); err == nil {
-				component.Weightage = weightage
-				totalWeight += weightage
-			}
-			if scored, err := strconv.ParseFloat(cleanNumber(row[MarksScoredMarkCellIndex-1]), 64); err == nil {
-				component.ScoredMarks = scored
-			}
-			if weightMark, err := strconv.ParseFloat(cleanNumber(row[MarksWeightageMarkCellIndex-1]), 64); err == nil {
-				component.WeightageMark = weightMark
-				totalScored += weightMark
-			}
-
-			components = append(components, component)
-		}
-
-		summary := types.CourseMarksSummary{
-			CourseCode:  course.CourseCode,
-			CourseTitle: course.CourseTitle,
-			CourseType:  course.CourseType,
-			Faculty:     course.Faculty,
-			Slot:        course.Slot,
-			Components:  components,
-			TotalScored: totalScored,
-			TotalWeight: totalWeight,
-		}
-
-		summaries = append(summaries, summary)
-	}
-
-	return summaries, nil
-}
 
 func GetMarks(regNo string, cookies types.Cookies, semID string, semChoice int) {
 	if !helpers.ValidateLogin(cookies) {

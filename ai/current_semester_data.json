@@ -1,0 +1,320 @@
+{
+  "generated_at": "2025-10-31T19:38:45.967944",
+  "reg_no": "23BCI0027",
+  "semester": "Fall Semester 2025-26",
+  "cgpa": 8.44,
+  "marks": [
+    {
+      "course_name": "Cloud Architecture Design",
+      "course_code": "BCSE352L",
+      "components": [
+        {
+          "title": "Continuous Assessment Test - I",
+          "max_marks": 50.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 32.0,
+          "weightage_mark": 9.6
+        }
+      ],
+      "total_scored": 0,
+      "total_weight": 100
+    },
+    {
+      "course_name": "Advanced Competitive Coding - I",
+      "course_code": "ACC",
+      "components": [
+        {
+          "title": "Assessment - 1",
+          "max_marks": 15.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 14.0,
+          "weightage_mark": 14.0
+        },
+        {
+          "title": "Continuous Assessment Test - I",
+          "max_marks": 30.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 27.0,
+          "weightage_mark": 13.5
+        },
+        {
+          "title": "Continuous Assessment Test - II",
+          "max_marks": 30.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 25.0,
+          "weightage_mark": 12.5
+        }
+      ],
+      "total_scored": 0,
+      "total_weight": 100
+    },
+    {
+      "course_name": "Artificial Intelligence",
+      "course_code": "BCSE307L",
+      "components": [
+        {
+          "title": "Continuous Assessment Test - I",
+          "max_marks": 50.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 45.0,
+          "weightage_mark": 13.5
+        },
+        {
+          "title": "Continuous Assessment Test - II",
+          "max_marks": 50.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 36.0,
+          "weightage_mark": 10.8
+        },
+        {
+          "title": "Quiz - I",
+          "max_marks": 10.0,
+          "weightage": 10.0,
+          "status": "Present",
+          "scored_mark": 7.0,
+          "weightage_mark": 7.0
+        }
+      ],
+      "total_scored": 0,
+      "total_weight": 100
+    },
+    {
+      "course_name": "Database Systems",
+      "course_code": "BCSE203L",
+      "components": [
+        {
+          "title": "Continuous Assessment Test - I",
+          "max_marks": 50.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 35.0,
+          "weightage_mark": 10.5
+        },
+        {
+          "title": "Continuous Assessment Test - II",
+          "max_marks": 50.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 34.0,
+          "weightage_mark": 10.2
+        },
+        {
+          "title": "Quiz - I",
+          "max_marks": 10.0,
+          "weightage": 10.0,
+          "status": "Present",
+          "scored_mark": 7.0,
+          "weightage_mark": 7.0
+        }
+      ],
+      "total_scored": 0,
+      "total_weight": 100
+    },
+    {
+      "course_name": "Compiler Design",
+      "course_code": "BCSE304L",
+      "components": [
+        {
+          "title": "Continuous Assessment Test - I",
+          "max_marks": 50.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 25.0,
+          "weightage_mark": 7.5
+        }
+      ],
+      "total_scored": 0,
+      "total_weight": 100
+    },
+    {
+      "course_name": "Malware Analysis",
+      "course_code": "BCSE358L",
+      "components": [
+        {
+          "title": "Continuous Assessment Test - I",
+          "max_marks": 50.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 40.0,
+          "weightage_mark": 12.0
+        }
+      ],
+      "total_scored": 0,
+      "total_weight": 100
+    },
+    {
+      "course_name": "Computer Networks",
+      "course_code": "BCSE303L",
+      "components": [
+        {
+          "title": "Continuous Assessment Test - I",
+          "max_marks": 50.0,
+          "weightage": 15.0,
+          "status": "Present",
+          "scored_mark": 29.5,
+          "weightage_mark": 8.85
+        }
+      ],
+      "total_scored": 0,
+      "total_weight": 100
+    }
+  ],
+  "attendance": [
+    {
+      "course_code": "BCSE203L",
+      "course_name": "Database Systems",
+      "course_type": "Theory Only",
+      "faculty": "Ramani S",
+      "attended": 34,
+      "total_classes": 36,
+      "attendance_percentage": 95
+    },
+    {
+      "course_code": "BCSE203P",
+      "course_name": "Database Systems Lab",
+      "course_type": "Lab Only",
+      "faculty": "Ramani S",
+      "attended": 24,
+      "total_classes": 24,
+      "attendance_percentage": 100
+    },
+    {
+      "course_code": "BCSE307L",
+      "course_name": "Artificial Intelligence",
+      "course_type": "Theory Only",
+      "faculty": "Sri Preethaa K R",
+      "attended": 34,
+      "total_classes": 36,
+      "attendance_percentage": 95
+    },
+    {
+      "course_code": "BCSE304L",
+      "course_name": "Compiler Design",
+      "course_type": "Theory Only",
+      "faculty": "Islabudeen M",
+      "attended": 30,
+      "total_classes": 35,
+      "attendance_percentage": 86
+    },
+    {
+      "course_code": "BCSE304P",
+      "course_name": "Compiler Design Lab",
+      "course_type": "Lab Only",
+      "faculty": "Islabudeen M",
+      "attended": 20,
+      "total_classes": 22,
+      "attendance_percentage": 91
+    },
+    {
+      "course_code": "BCSE303L",
+      "course_name": "Computer Networks",
+      "course_type": "Theory Only",
+      "faculty": "Ebenezer Juliet S",
+      "attended": 32,
+      "total_classes": 35,
+      "attendance_percentage": 92
+    },
+    {
+      "course_code": "BCSE303P",
+      "course_name": "Computer Networks Lab",
+      "course_type": "Lab Only",
+      "faculty": "Ebenezer Juliet S",
+      "attended": 22,
+      "total_classes": 24,
+      "attendance_percentage": 92
+    },
+    {
+      "course_code": "BCSE358L",
+      "course_name": "Malware Analysis",
+      "course_type": "Theory Only",
+      "faculty": "Kathiravan S",
+      "attended": 21,
+      "total_classes": 24,
+      "attendance_percentage": 88
+    },
+    {
+      "course_code": "BCSE358P",
+      "course_name": "Malware Analysis Lab",
+      "course_type": "Lab Only",
+      "faculty": "Kathiravan S",
+      "attended": 22,
+      "total_classes": 24,
+      "attendance_percentage": 92
+    },
+    {
+      "course_code": "BCSE352L",
+      "course_name": "Cloud Architecture Design",
+      "course_type": "Theory Only",
+      "faculty": "Bhuvaneswari M S",
+      "attended": 33,
+      "total_classes": 36,
+      "attendance_percentage": 92
+    },
+    {
+      "course_code": "BSTS201P",
+      "course_name": "Advanced Competitive Coding",
+      "course_type": "Soft Skill",
+      "faculty": "Ethnus (Apt)",
+      "attended": 31,
+      "total_classes": 36,
+      "attendance_percentage": 87
+    }
+  ],
+  "exams": [
+    {
+      "course_code": "BCSE352L",
+      "course_name": "Cloud Architecture Design",
+      "exam_type": "FAT",
+      "date": "2025-11-25",
+      "time": "10:00 AM"
+    },
+    {
+      "course_code": "ACC",
+      "course_name": "Advanced Competitive Coding - I",
+      "exam_type": "FAT",
+      "date": "2025-11-25",
+      "time": "10:00 AM"
+    },
+    {
+      "course_code": "BCSE307L",
+      "course_name": "Artificial Intelligence",
+      "exam_type": "FAT",
+      "date": "2025-11-25",
+      "time": "10:00 AM"
+    },
+    {
+      "course_code": "BCSE203L",
+      "course_name": "Database Systems",
+      "exam_type": "FAT",
+      "date": "2025-11-25",
+      "time": "10:00 AM"
+    },
+    {
+      "course_code": "BCSE304L",
+      "course_name": "Compiler Design",
+      "exam_type": "FAT",
+      "date": "2025-11-25",
+      "time": "10:00 AM"
+    },
+    {
+      "course_code": "BCSE358L",
+      "course_name": "Malware Analysis",
+      "exam_type": "FAT",
+      "date": "2025-11-25",
+      "time": "10:00 AM"
+    },
+    {
+      "course_code": "BCSE303L",
+      "course_name": "Computer Networks",
+      "exam_type": "FAT",
+      "date": "2025-11-25",
+      "time": "10:00 AM"
+    }
+  ]
+}

@@ -6,8 +6,9 @@ import (
 	"cli-top/helpers"
 	"cli-top/types"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 const (
@@ -34,8 +35,19 @@ func PrintHostelInfo(regNo string, cookies types.Cookies, url string) {
 
 	fmt.Println("Student Accommodation Info")
 
-	table := doc.Find(HostelTableSelector + " " + HostelRowsSelector)
-	lastFiveRows := table.Slice(-5, table.Length())
+	rows := doc.Find(HostelTableSelector + " " + HostelRowsSelector)
+	totalRows := rows.Length()
+
+	if totalRows == 0 {
+		fmt.Println("No hostel information available at the moment.")
+		return
+	}
+
+	startIdx := totalRows - 5
+	if startIdx < 0 {
+		startIdx = 0
+	}
+	lastFiveRows := rows.Slice(startIdx, totalRows)
 
 	// Prepare nested list for PrintTable
 	nestedList := [][]string{{"Field", "Information"}}

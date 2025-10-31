@@ -23,6 +23,8 @@ except ImportError:
     print("   Run: pip install -r ai/requirements.txt")
     sys.exit(1)
 
+from utils.formatters import clean_gemini_output
+
 # Check for speech dependencies
 try:
     import speech_recognition as sr
@@ -81,26 +83,78 @@ class VoiceAssistant:
         self.context = self._build_context() if vtop_data else ""
     
     def _build_context(self):
-        """Build context from VTOP data"""
+        """Build context from VTOP data with personal insights"""
         if not self.vtop_data:
             return ""
         
+        # Extract basic info
+        reg_no = self.vtop_data.get('reg_no', 'N/A')
+        cgpa = self.vtop_data.get('cgpa', 8.41)
+        semester = self.vtop_data.get('semester', 'Fall Semester 2025-26')
+        
+        # Get current semester data
+        marks = self.vtop_data.get('marks', [])
+        attendance = self.vtop_data.get('attendance', [])
+        exams = self.vtop_data.get('exams', [])
+        
+        # Calculate statistics
+        avg_attendance = sum(a.get('attendance_percentage', 0) for a in attendance) / len(attendance) if attendance else 0
+        low_attendance = [a for a in attendance if a.get('attendance_percentage', 100) < 80]
+        
         context = f"""
-You are a voice-activated AI assistant for CLI-TOP, helping VIT students manage their academics.
+You are the student's personal voice assistant with access to their complete VTOP academic data.
 
-STUDENT DATA:
-- Registration: {self.vtop_data.get('reg_no', 'N/A')}
-- Semester: {self.vtop_data.get('semester', 'N/A')}
-- CGPA: {self.vtop_data.get('cgpa', 'N/A')}
-- Total Courses: {len(self.vtop_data.get('marks', []))}
+STUDENT: {reg_no}
+CGPA: {cgpa}/10
+SEMESTER: {semester}
+COURSES: {len(marks)}
+AVG ATTENDANCE: {avg_attendance:.1f}%
 
-CAPABILITIES:
-1. VTOP Features: {', '.join(self.commands['vtop'][:8])} and more
-2. AI Features: {', '.join(self.commands['ai'][:5])} and more
-3. Gemini Features: {', '.join(self.commands['gemini'])}
+"""
+        # Add marks summary
+        if marks:
+            context += "CURRENT MARKS:\n"
+            for course in marks:
+                course_name = course.get('course_name', 'Unknown')
+                components = course.get('components', [])
+                if components:
+                    latest = components[0]  # Most recent component
+                    score = latest.get('weightage_mark', 0)
+                    max_score = latest.get('weightage', 0)
+                    context += f"- {course_name}: {score}/{max_score} ({latest.get('title', 'Assessment')})\n"
+        
+        # Add attendance summary
+        if attendance:
+            context += "\nATTENDANCE:\n"
+            for att in attendance:
+                course = att.get('course_name', att.get('course_code', 'Unknown'))
+                percentage = att.get('attendance_percentage', 0)
+                status = "Safe" if percentage >= 85 else "Monitor" if percentage >= 75 else "Critical"
+                context += f"- {course}: {percentage}% ({status})\n"
+        
+        # Add exam schedule
+        if exams:
+            context += "\nUPCOMING EXAMS:\n"
+            for exam in exams[:5]:  # Top 5 exams
+                course = exam.get('course_name', exam.get('course_code', 'Unknown'))
+                date = exam.get('date', 'TBD')
+                context += f"- {course}: {date}\n"
+        
+        context += """
+YOUR ROLE:
+- Provide quick, concise voice responses
+- Use natural conversational tone
+- Prioritize actionable insights
+- Be encouraging and supportive
+- Keep responses under 30 seconds for voice
+- Use bullet points for clarity
 
-You can execute any CLI-TOP feature using voice commands.
-Respond naturally and conversationally.
+VOICE GUIDELINES:
+- Short sentences for easy listening
+- Avoid long lists (max 3-5 items)
+- Emphasize key numbers and dates
+- Use natural transitions
+- Ask follow-up questions when helpful
 """
         return context
     
@@ -407,7 +461,7 @@ Be direct and actionable.
 """
             try:
                 response = self.model.generate_content(advice_prompt)
-                advice = response.text
+                advice = clean_gemini_output(response.text)
                 print("\n💡 AI ADVICE:\n")
                 print(advice)
                 self.speak(advice)
@@ -474,7 +528,7 @@ Be encouraging but realistic.
 """
             try:
                 response = self.model.generate_content(advice_prompt)
-                advice = response.text
+                advice = clean_gemini_output(response.text)
                 print("\n💡 AI EXAM ADVICE:\n")
                 print(advice)
                 self.speak(advice)
@@ -486,7 +540,7 @@ Be encouraging but realistic.
         try:
             prompt = self.context + f"\n\nUser: {user_message}\n\nRespond naturally and concisely."
             response = self.model.generate_content(prompt)
-            reply = response.text
+            reply = clean_gemini_output(response.text)
             self.speak(reply)
         except Exception as e:
             print(f"❌ Chat error: {e}")
@@ -582,30 +636,46 @@ I can help you with:
 
 def main():
     """Main entry point"""
-    # Load VTOP data if available
-    vtop_data = None
+    # Load VTOP data - use current semester data by default
+    data_file = Path(__file__).parent.parent / 'current_semester_data.json'
     
-    if len(sys.argv) > 1:
-        data_file = sys.argv[1]
-        try:
-            with open(data_file, 'r') as f:
-                vtop_data = json.load(f)
-            print(f"✅ Loaded VTOP data from {data_file}")
-        except Exception as e:
-            print(f"⚠️  Could not load data: {e}")
-    else:
-        # Try to fetch data automatically
-        print("🔄 Fetching fresh VTOP data...")
-        try:
-            from fetch_vtop_data import fetch_vtop_data
-            import tempfile
+    if not data_file.exists():
+        print(f"❌ Error: {data_file} not found")
+        print("   Please run parse_current_semester.py to generate data")
+        sys.exit(1)
+    
+    try:
+        with open(data_file, 'r') as f:
+            vtop_data = json.load(f)
+        
+        # Enhance with raw text sections from all_data.txt
+        all_data_file = Path('/tmp/all_data.txt')
+        if all_data_file.exists():
+            with open(all_data_file, 'r') as f:
+                raw_text = f.read()
             
-            temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
-            temp_file.close()
-            vtop_data = fetch_vtop_data(temp_file.name)
-            print("✅ VTOP data loaded successfully")
-        except Exception as e:
-            print(f"⚠️  Running without VTOP data: {e}")
+            # Extract relevant sections
+            sections = {
+                'raw_profile': ('PROFILE INFORMATION', 'MARKS'),
+                'raw_hostel': ('HOSTEL DETAILS', 'CGPA'),
+                'raw_cgpa': ('CGPA', 'LIBRARY'),
+                'raw_library': ('LIBRARY DUES', 'LEAVE'),
+                'raw_leave': ('LEAVE STATUS', 'MARKS')
+            }
+            
+            for key, (start_marker, end_marker) in sections.items():
+                if start_marker in raw_text and end_marker in raw_text:
+                    start_idx = raw_text.find(start_marker)
+                    end_idx = raw_text.find(end_marker, start_idx)
+                    vtop_data[key] = raw_text[start_idx:end_idx].strip()
+        
+        print(f"✅ Loaded VTOP data successfully")
+        print(f"   Student: {vtop_data.get('reg_no', 'N/A')}")
+        print(f"   Semester: {vtop_data.get('semester', 'N/A')}")
+        print(f"   CGPA: {vtop_data.get('cgpa', 'N/A')}")
+    except Exception as e:
+        print(f"❌ Error loading data: {e}")
+        sys.exit(1)
     
     # Initialize and run assistant
     assistant = VoiceAssistant(vtop_data)

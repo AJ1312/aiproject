@@ -5,7 +5,6 @@ import (
 	"cli-top/debug"
 	"cli-top/helpers"
 	"cli-top/types"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -102,63 +101,4 @@ func GetLeaveStatus(regNo string, cookies types.Cookies) {
 
 	helpers.PrintTable(allRequests, 0)
 	fmt.Println()
-}
-
-// FetchLeaveStatusSummary returns leave requests without printing to stdout.
-func FetchLeaveStatusSummary(regNo string, cookies types.Cookies) ([]types.LeaveApplication, error) {
-	if !helpers.ValidateLogin(cookies) {
-		return nil, errors.New("invalid login session")
-	}
-
-	url1 := "https://vtop.vit.ac.in/vtop/hostels/student/leave/1"
-	payload1 := fmt.Sprintf("verifyMenu=true&authorizedID=%s&_csrf=%s&nocache=%d",
-		regNo,
-		cookies.CSRF,
-		time.Now().UnixNano(),
-	)
-	_, err := helpers.FetchReq(regNo, cookies, url1, "", payload1, "POST", "")
-	if err != nil {
-		return nil, err
-	}
-
-	url2 := "https://vtop.vit.ac.in/vtop/hostels/student/leave/4"
-	payload2 := fmt.Sprintf("_csrf=%s&authorizedID=%s&status=&form=undefined&control=status&x=%s",
-		cookies.CSRF,
-		regNo,
-		time.Now().UTC().Format(time.RFC1123),
-	)
-	bodyText, err := helpers.FetchReq(regNo, cookies, url2, "", payload2, "POST", "")
-	if err != nil {
-		return nil, err
-	}
-
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(bodyText))
-	if err != nil {
-		return nil, err
-	}
-
-	var applications []types.LeaveApplication
-
-	doc.Find(LeaveStatusTableSelector).Find(LeaveStatusRowsSelector).Each(func(i int, rowSelection *goquery.Selection) {
-		reason := strings.TrimSpace(rowSelection.Find(LeaveStatusCellSelector + ".text-primary.text-nowrap").Eq(1).Text())
-		visitPlace := strings.TrimSpace(rowSelection.Find(LeaveStatusCellSelector + ".text-primary.text-nowrap").Eq(0).Text())
-		leaveType := strings.TrimSpace(rowSelection.Find(LeaveStatusCellSelector + ".text-primary.text-nowrap").Eq(2).Text())
-		from := helpers.FormatDate(strings.TrimSpace(rowSelection.Find(LeaveStatusCellSelector + ".text-primary.text-nowrap").Eq(3).Text()))
-		to := helpers.FormatDate(strings.TrimSpace(rowSelection.Find(LeaveStatusCellSelector + ".text-primary.text-nowrap").Eq(4).Text()))
-		status := strings.TrimSpace(rowSelection.Find(LeaveStatusCellSelector + ".text-primary.text-nowrap").Eq(5).Text())
-		if visitPlace == "" {
-			return
-		}
-
-		applications = append(applications, types.LeaveApplication{
-			VisitPlace: visitPlace,
-			Reason:     reason,
-			LeaveType:  leaveType,
-			From:       from,
-			To:         to,
-			Status:     status,
-		})
-	})
-
-	return applications, nil
 }

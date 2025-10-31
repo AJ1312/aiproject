@@ -4,9 +4,7 @@ import (
 	"cli-top/debug"
 	"cli-top/helpers"
 	"cli-top/types"
-	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -87,64 +85,4 @@ func PrintCgpa(regNo string, cookies types.Cookies, url string) {
 	fmt.Println()
 
 	// Print the credits and CGPA information in line format
-}
-
-// FetchCgpaSnapshot retrieves CGPA details without printing to stdout.
-func FetchCgpaSnapshot(regNo string, cookies types.Cookies, url string) (types.CGPASnapshot, error) {
-	var snapshot types.CGPASnapshot
-	if !helpers.ValidateLogin(cookies) {
-		return snapshot, errors.New("invalid login session")
-	}
-
-	body, err := helpers.FetchReq(regNo, cookies, url, "", "", "POST", "")
-	if err != nil {
-		return snapshot, err
-	}
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(body)))
-	if err != nil {
-		return snapshot, err
-	}
-
-	row := doc.Find(CGPATableSelector + " " + CGPARowsSelector).First()
-	if row.Length() == 0 {
-		return snapshot, errors.New("cgpa row not found")
-	}
-
-	parseInt := func(text string) int {
-		value, err := strconv.Atoi(strings.TrimSpace(text))
-		if err != nil {
-			return 0
-		}
-		return value
-	}
-
-	parseFloat := func(text string) float64 {
-		value, err := strconv.ParseFloat(strings.TrimSpace(text), 64)
-		if err != nil {
-			return 0
-		}
-		return value
-	}
-
-	snapshot.CreditsRegistered = parseInt(row.Find(CGPACellSelector).Eq(CreditsRegisteredIndex).Text())
-	snapshot.CreditsEarned = parseInt(row.Find(CGPACellSelector).Eq(CreditsEarnedIndex).Text())
-	snapshot.CGPA = parseFloat(row.Find(CGPACellSelector).Eq(CGPAIndex).Text())
-	snapshot.SGrades = parseInt(row.Find(CGPACellSelector).Eq(SGradesIndex).Text())
-	snapshot.AGrades = parseInt(row.Find(CGPACellSelector).Eq(AGradesIndex).Text())
-	snapshot.BGrades = parseInt(row.Find(CGPACellSelector).Eq(BGradesIndex).Text())
-	snapshot.CGrades = parseInt(row.Find(CGPACellSelector).Eq(CGradesIndex).Text())
-	snapshot.DGrades = parseInt(row.Find(CGPACellSelector).Eq(DGradesIndex).Text())
-	snapshot.EGrades = parseInt(row.Find(CGPACellSelector).Eq(EGradesIndex).Text())
-	snapshot.FGrades = parseInt(row.Find(CGPACellSelector).Eq(FGradesIndex).Text())
-	snapshot.NGrades = parseInt(row.Find(CGPACellSelector).Eq(NGradesIndex).Text())
-
-	// Attempt to extract semester name if present (fallback to "Latest")
-	title := strings.TrimSpace(doc.Find("h4").First().Text())
-	if title == "" {
-		title = "Latest"
-	}
-	snapshot.Semester = title
-
-	return snapshot, nil
 }

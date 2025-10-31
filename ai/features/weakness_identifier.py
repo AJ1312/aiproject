@@ -233,7 +233,7 @@ def run_weakness_identifier(vtop_data: Dict) -> Dict:
     
     for mark in marks:
         course_code = mark.get("course_code", "")
-        course_name = mark.get("course_title", "")
+        course_name = mark.get("course_name", mark.get("course_title", ""))
         components = mark.get("components", [])
         
         # Find attendance
@@ -358,7 +358,13 @@ def run_weakness_identifier(vtop_data: Dict) -> Dict:
             for comp in course["weak_components"]:
                 lines.append(f"  • {comp}")
         
-        print_box(f"{icon} {course['course_code']}", lines)
+        # Display full course name with code
+        display_name = course.get('course_name', course['course_code'])
+        if display_name and display_name != course['course_code']:
+            header = f"{icon} {display_name} ({course['course_code']})"
+        else:
+            header = f"{icon} {course['course_code']}"
+        print_box(header, lines)
         print()
     
     # Show analysis by subject type

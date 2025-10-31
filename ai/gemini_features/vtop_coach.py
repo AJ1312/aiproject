@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import google.generativeai as genai
 from config import GOOGLE_API_KEY, GEMINI_MODEL, TEMPERATURE, OUTPUT_DIR
+from utils.formatters import clean_gemini_output
 
 
 def load_vtop_data(file_path):
@@ -34,15 +35,16 @@ def analyze_performance(vtop_data):
     attendance_perfect = []
     
     for course in vtop_data.get('marks', []):
-        # Calculate internal percentage
-        cat1 = course.get('cat1', 0)
-        cat2 = course.get('cat2', 0)
-        da = course.get('da', 0)
-        quiz1 = course.get('quiz1', 0)
-        quiz2 = course.get('quiz2', 0)
+        # Calculate internal percentage from components
+        internal_total = 0
+        components = course.get('components', [])
         
-        internal_total = cat1 + cat2 + da + quiz1 + quiz2
-        internal_pct = (internal_total / 60) * 100
+        for comp in components:
+            weightage_mark = comp.get('weightage_mark', 0)
+            internal_total += weightage_mark
+        
+        # Internal is out of 60 (CAT1+CAT2+DA+Quiz1+Quiz2)
+        internal_pct = (internal_total / 60) * 100 if internal_total > 0 else 0
         total_internal_pct += internal_pct
         
         if internal_pct >= 80:
@@ -75,13 +77,13 @@ def analyze_performance(vtop_data):
     }
 
 
-def generate_motivational_message(vtop_data, stats, mode='motivational'):
-    """Generate motivational or roast message using Gemini"""
+def generate_message(vtop_data, stats, mode='motivational'):
+    """Generate motivational or roast message using Advanced AI"""
     
     if not GOOGLE_API_KEY:
-        return "❌ Error: GOOGLE_API_KEY not configured. Please set it in .env file."
+        return "❌ Error: GOOGLE_API_KEY not configured"
     
-    # Configure Gemini
+    # Configure Advanced AI
     genai.configure(api_key=GOOGLE_API_KEY)
     model = genai.GenerativeModel(GEMINI_MODEL)
     
@@ -98,21 +100,33 @@ Student Statistics:
 """
     
     if mode == 'roast':
-        prompt = f"""You are a friendly but hilariously honest AI roast master for VIT students. 
+        prompt = f"""You are a brutally honest, savage AI roast master who gives DARK and HILARIOUS roasts to VIT students about their academic performance. NO HOLDING BACK.
 
 {context}
 
-Roast this student's academic performance in a funny, witty, but ultimately encouraging way. Rules:
-1. Be SAVAGE but never mean or discouraging
-2. Use Gen-Z humor and memes references
-3. Point out the funny contradictions (like perfect attendance but failing grades, or vice versa)
-4. End with an actually helpful motivational twist
-5. Keep it under 300 words
-6. Use emojis generously 😂
+ROAST this student HARD. Make it DARK and FUNNY. Rules:
+1. Be ABSOLUTELY SAVAGE - this is a roast, not a pep talk
+2. Use dark humor, sarcasm, and brutal honesty
+3. Call out every contradiction, every failure, every weak point
+4. Use Gen-Z slang and meme references (💀, "bro really thought", "the audacity", etc.)
+5. Compare their scores to everyday failures (like ordering extra cheese but getting none)
+6. Mock their choices, their attendance, their study habits
+7. End with ONE line of tough love (but still harsh)
+8. Keep it under 350 words but pack MAXIMUM DAMAGE
+9. Use fire emojis, skull emojis, and coffin emojis
 
-Example style: "Bro really said 'I have 95% attendance' and then proceeded to score 60% internals 💀 That's not character development, that's a plot hole!"
+Example style: 
+"CGPA 8.44 but 30% internal average? 💀 Bro woke up and chose CONFUSION. That's like being rich on paper but broke in real life. The math ain't mathing. 
 
-Now roast this student (but make them laugh and motivate them at the end):
+You're out here collecting participation trophies while the grades are running away like they saw their ex. Seven subjects need attention? That's not a study plan, that's a rescue mission. 
+
+VIT really gave you admission and you said 'let me speedrun academic mediocrity' 😭 The attendance might be decent but these internals are sending thoughts and prayers to themselves.
+
+You got the CGPA of someone who studies but the internals of someone who just discovered Netflix. Pick a struggle bestie, you can't have both.
+
+Wake up call: CAT2 is coming and it's bringing your nightmares with it. Fix this before the semester roasts you harder than I just did. 🔥"
+
+Now absolutely DEMOLISH this student's performance with dark humor:
 """
     
     elif mode == 'motivational':
@@ -148,16 +162,72 @@ Keep it fun, informative, and under 250 words. Use emojis! 🧠✨
 """
     
     try:
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                'temperature': 0.9,  # Higher creativity for fun messages
-                'max_output_tokens': 512
-            }
-        )
+        # More aggressive settings for roast mode
+        if mode == 'roast':
+            response = model.generate_content(
+                prompt,
+                generation_config={
+                    'temperature': 1.0,  # Maximum creativity for savage roasts
+                    'max_output_tokens': 600,
+                    'top_p': 0.95,
+                    'top_k': 40
+                },
+                safety_settings=[
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+                ]
+            )
+        else:
+            response = model.generate_content(
+                prompt,
+                generation_config={
+                    'temperature': 0.8,
+                    'max_output_tokens': 512
+                },
+                safety_settings=[
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+                ]
+            )
         
-        return response.text
-    
+        # Handle blocked responses
+        if response.candidates and response.candidates[0].finish_reason == 2:
+            return f"""🔥💀 ACADEMIC ROAST - NO MERCY EDITION 💀🔥
+
+Alright, let's talk about this trainwreck:
+
+📊 Your "Stats" (if we can even call them that):
+• CGPA: {stats['cgpa']}/10 (Congrats on the bare minimum flexibility)
+• Internal Average: {stats['avg_internal_pct']:.1f}% (That's not a score, that's a cry for help)
+• Strong Subjects: {stats['strong_count']}/{stats['total_subjects']} (Yikes)
+• Needs CPR: {stats['weak_count']}/{stats['total_subjects']} subjects
+
+� THE BRUTAL TRUTH:
+You got an {stats['cgpa']} CGPA which is... fine I guess? But that {stats['avg_internal_pct']:.1f}% internal average? BRO. 💀
+
+That's not academic performance, that's academic EXISTENCE. You're out here collecting grades like Pokémon cards but forgetting to actually LEVEL UP.
+
+{stats['weak_count']} subjects need attention? That's not a to-do list, that's a SURVIVAL GUIDE. You're basically the academic equivalent of "it runs but barely."
+
+The way you're going, CAT2 isn't gonna test you - it's gonna ROAST you. And unlike me, it won't be funny.
+
+🎯 Fix This Before It's Too Late:
+1. Stop treating internals like optional side quests
+2. Those {stats['weak_count']} subjects? They need a RESURRECTION, not attention
+3. Study like your degree depends on it (because it literally does)
+
+Real talk: You got into VIT. That means you CAN do better. So stop playing games and START PLAYING TO WIN. The semester won't wait for your character development arc. 
+
+Get it together. The FAT is coming and it's bringing CONSEQUENCES. 🔥
+
+- Your Brutally Honest AI Coach"""
+        
+        return clean_gemini_output(response.text)
+
     except Exception as e:
         return f"❌ Error generating message: {str(e)}"
 
@@ -181,9 +251,15 @@ def main():
         'funfacts': '🧠 VTOP FUN FACTS'
     }
     
+    titles = {
+        'motivational': 'MOTIVATIONAL COACH',
+        'roast': 'ROAST MODE ACTIVATED',
+        'funfacts': 'VTOP FUN FACTS'
+    }
+    
     print("="*80)
     print(mode_emojis.get(mode, '🎮 VTOP COACH'))
-    print("Powered by Gemini AI")
+    print("Powered by Advanced Gemma LLM")
     print("="*80)
     print()
     
@@ -196,7 +272,7 @@ def main():
     
     # Generate message
     print(f"🤖 Generating {mode} message...\n")
-    message = generate_motivational_message(vtop_data, stats, mode)
+    message = generate_message(vtop_data, stats, mode)
     
     # Display
     print(message)
@@ -206,14 +282,13 @@ def main():
     output_file = OUTPUT_DIR / f'vtop_coach_{mode}.txt'
     
     with open(output_file, 'w') as f:
-        f.write("="*80 + "\n")
-        f.write(f"{mode_emojis.get(mode, 'VTOP COACH')}\n")
-        f.write("Powered by Gemini AI\n")
-        f.write("="*80 + "\n\n")
+        f.write("=" * 70 + "\n")
+        f.write(f"{titles[mode]}\n")
+        f.write("=" * 70 + "\n\n")
         f.write(message)
-        f.write("\n\n" + "="*80 + "\n")
-        f.write("* AI-generated for entertainment and motivation.\n")
-        f.write("="*80 + "\n")
+        f.write("\n\n" + "=" * 70 + "\n")
+        f.write("Powered by Advanced Gemma LLM\n")
+        f.write("=" * 70 + "\n")
     
     print(f"✓ Message saved to: {output_file}")
     print()

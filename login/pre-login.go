@@ -19,8 +19,11 @@ func getSessionServer() types.Cookies {
 	helpers.SetVtopHeaders(req)
 	req.Header.Set("Sec-Fetch-Site", "none")
 	resp, err := client.Do(req)
-	if err != nil && debug.Debug {
-		fmt.Println(err)
+	if err != nil {
+		if debug.Debug {
+			fmt.Println(err)
+		}
+		return types.Cookies{}
 	}
 	defer resp.Body.Close()
 
@@ -48,8 +51,11 @@ func getLoginPage() (types.Cookies, string) {
 	req.Header.Set("Referer", "https://vtop.vit.ac.in/vtop/open/page")
 	req.Header.Set("Cookie", fmt.Sprintf("JSESSIONID=%s; SERVERID=%s", cookies.JSESSIONID, cookies.SERVERID))
 	resp, err := client.Do(req)
-	if err != nil && debug.Debug {
-		fmt.Println(err)
+	if err != nil {
+		if debug.Debug {
+			fmt.Println(err)
+		}
+		return cookies, ""
 	}
 	defer resp.Body.Close()
 

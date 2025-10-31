@@ -31,8 +31,11 @@ func performLogin(userInfo types.LogIn, cookies types.Cookies, captcha string) t
 	req.Header.Set("Referer", "https://vtop.vit.ac.in/vtop/login")
 	req.Header.Set("Cookie", fmt.Sprintf("JSESSIONID=%s; SERVERID=%s", cookies.JSESSIONID, cookies.SERVERID))
 	resp, err := client.Do(req)
-	if err != nil && debug.Debug {
-		fmt.Println(err)
+	if err != nil {
+		if debug.Debug {
+			fmt.Println(err)
+		}
+		return types.Cookies{}
 	}
 	defer resp.Body.Close()
 
@@ -56,8 +59,11 @@ func errorCheck(cookies types.Cookies) bool {
 	req.Header.Set("Referer", "https://vtop.vit.ac.in/vtop/login")
 	req.Header.Set("Cookie", fmt.Sprintf("JSESSIONID=%s; SERVERID=%s", cookies.JSESSIONID, cookies.SERVERID))
 	resp, err := client.Do(req)
-	if err != nil && debug.Debug {
-		fmt.Println(err)
+	if err != nil {
+		if debug.Debug {
+			fmt.Println(err)
+		}
+		return false
 	}
 	defer resp.Body.Close()
 	bodyText, err := io.ReadAll(resp.Body)
@@ -115,8 +121,11 @@ func HomePage(vtopTokens types.Cookies) (types.Cookies, string) {
 	req.Header.Set("Referer", "https://vtop.vit.ac.in/vtop/login")
 	req.Header.Set("Cookie", fmt.Sprintf("JSESSIONID=%s; SERVERID=%s", vtopTokens.JSESSIONID, vtopTokens.SERVERID))
 	resp, err := client.Do(req)
-	if err != nil && debug.Debug {
-		fmt.Println(err)
+	if err != nil {
+		if debug.Debug {
+			fmt.Println(err)
+		}
+		return vtopTokens, ""
 	}
 	defer resp.Body.Close()
 

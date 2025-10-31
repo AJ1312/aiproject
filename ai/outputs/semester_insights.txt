@@ -1,0 +1,34 @@
+================================================================================
+SEMESTER INSIGHTS ANALYZER (Powered by Gemini AI)
+================================================================================
+
+Hello there! I'm your academic advisor, and I've reviewed your performance for the Fall Semester 2025-26. It's great to see your current CGPA of 8.41, which reflects a strong academic history. However, we need to have a very serious and urgent discussion about your current semester's performance.
+
+Let's break down the situation:
+
+### 1. Overall Semester Health: **Critical Concern - Needs Immediate Intervention**
+
+While your overall CGPA is excellent, your performance in the current semester's internal assessments is **extremely alarming**. With 0% internal marks across all your lecture courses, you are currently on a path to fail every single one of them, regardless of how well you perform in the Final Assessment Test (FAT). This situation requires immediate and drastic action.
+
+### 2. Subject-wise Analysis:
+
+*   **Strong Subjects**: Unfortunately, there are **no strong subjects** based on the internal marks provided. All listed lecture courses have 0% internal marks.
+*   **Average Subjects**: There are **no average subjects** based on the internal marks provided.
+*   **Weak Subjects**: **All your lecture courses** (BCSE355L, BSTS301P, BCSE306L, BCSE302L, BCSE307L, BCSE321L, BCSE308L) are critically weak with 0% internal marks. This means you have not secured any marks from CAT1, CAT2, DA, Quiz1, or Quiz2 in these subjects.
+
+### 3. Attendance Status:
+
+This is one of the few positive points in your current profile. Your attendance is consistently good across all subjects:
+
+*   **Attendance Concerns (<75%)**: **None**. All your courses are well above the VIT minimum attendance requirement of 75%.
+*   **Subjects with good attendance buffer**: All listed courses have excellent attendance, mostly ranging from 85.7% to 100%. This indicates you are physically present in classes, which is a good foundation to build upon.
+
+### 4. Key Insights:
+
+*   **Patterns in Performance**: The most striking and concerning pattern is the **consistent 0% internal marks across all internal assessments and all lecture courses.** This is highly unusual, especially for a student with an 8.41 CGPA. It suggests a fundamental issue beyond just difficulty with a specific subject.
+*   **Strengths**: Your strong past academic record (reflected by your CGPA) and your excellent attendance in the current semester are significant strengths. These indicate you *have the capability* to perform well and that you are making an effort to be present in classes.
+*   **Weaknesses**: The complete lack of marks in internal assessments is your most critical weakness. Internal marks account for 60% of your total grade. Even if you score a perfect 40/40 in the FAT for any of these subjects, your total score would be 40/100, resulting
+
+================================================================================
+* AI-generated insights. Results may vary from actual outcomes.
+================================================================================

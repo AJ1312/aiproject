@@ -17,6 +17,8 @@ except ImportError:
     print("   Run: pip install -r ai/requirements.txt")
     sys.exit(1)
 
+from utils.formatters import clean_gemini_output
+
 def analyze_career_path(vtop_data):
     """Generate career recommendations based on academic performance"""
     
@@ -56,7 +58,7 @@ Be specific, data-driven, and encouraging. Focus on realistic and achievable car
     
     try:
         response = model.generate_content(prompt)
-        return response.text
+        return clean_gemini_output(response.text)
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
@@ -78,7 +80,7 @@ def main():
     print(advice)
     print()
     print("=" * 70)
-    print("💡 Powered by Gemini AI")
+    print("💡 Powered by Advanced Gemma LLM")
     print("=" * 70)
 
 if __name__ == '__main__':

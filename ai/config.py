@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CLI-TOP AI Configuration
-Central configuration for all AI features and Gemini integration
+Central configuration for all AI features and Advanced AI integration
 """
 
 import os
@@ -13,18 +13,18 @@ env_path = Path(__file__).parent / '.env'
 if env_path.exists():
     load_dotenv(env_path)
 
-# Gemini API Configuration
+# Advanced AI API Configuration
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '')
 
 if not GOOGLE_API_KEY:
     print("⚠️  Warning: GOOGLE_API_KEY not set")
     print("   To use AI features, please:")
-    print("   1. Get a Gemini API key from: https://makersuite.google.com/app/apikey")
+    print("   1. Get an API key from: https://makersuite.google.com/app/apikey")
     print("   2. Set it in ai/.env file: GOOGLE_API_KEY=your_key_here")
     print("   3. Or set environment variable: export GOOGLE_API_KEY=your_key_here")
     print()
 
-# Model configuration
+# Model configuration (Advanced Gemma LLM)
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
 GEMINI_LIVE_MODEL = os.getenv('GEMINI_LIVE_MODEL', 'gemini-2.5-flash-live')
 TEMPERATURE = float(os.getenv('TEMPERATURE', '0.7'))
@@ -43,7 +43,7 @@ ENABLE_PERFORMANCE_INSIGHTS = True
 # Display configuration
 if GOOGLE_API_KEY:
     print(f"✅ AI Configuration loaded")
-    print(f"   Model: {GEMINI_MODEL}")
+    print(f"   Model: Advanced Gemma LLM")
     print(f"   API Key: ✓ Set")
     print(f"   Output Directory: {OUTPUT_DIR}")
     print()

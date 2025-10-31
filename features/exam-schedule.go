@@ -5,7 +5,6 @@ import (
 	"cli-top/debug"
 	"cli-top/helpers"
 	"cli-top/types"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -21,56 +20,6 @@ const (
 	ExamRowsSelector  = "tbody tr"
 	ExamCellSelector  = "td"
 )
-
-// FetchExamScheduleData retrieves exam schedule details for the latest semester.
-func FetchExamScheduleData(regNo string, cookies types.Cookies) ([]types.ExamEvent, error) {
-	if !helpers.ValidateLogin(cookies) {
-		return nil, errors.New("invalid login session")
-	}
-
-	semesters, err := helpers.GetSemDetails(cookies, regNo)
-	if err != nil {
-		return nil, err
-	}
-	if len(semesters) == 0 {
-		return nil, errors.New("no semesters available")
-	}
-
-	url := "https://vtop.vit.ac.in/vtop/examinations/doSearchExamScheduleForStudent"
-
-	for i := 0; i < len(semesters); i++ {
-		semID := semesters[i].SemID
-		bodyText, err := helpers.FetchReq(regNo, cookies, url, semID, "UTC", "POST", "")
-		if err != nil {
-			if debug.Debug {
-				fmt.Printf("error fetching exam schedule for %s: %v\n", semesters[i].SemName, err)
-			}
-			continue
-		}
-
-		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(bodyText))
-		if err != nil {
-			if debug.Debug {
-				fmt.Printf("error parsing exam html for %s: %v\n", semesters[i].SemName, err)
-			}
-			continue
-		}
-
-		exams, err := parseExamSchedule(doc)
-		if err != nil {
-			if debug.Debug {
-				fmt.Printf("error extracting exams for %s: %v\n", semesters[i].SemName, err)
-			}
-			continue
-		}
-
-		if len(exams) > 0 {
-			return exams, nil
-		}
-	}
-
-	return []types.ExamEvent{}, nil
-}
 
 func GetExamSchedule(regNo string, cookies types.Cookies, sem_choice int) {
 	if !helpers.ValidateLogin(cookies) {

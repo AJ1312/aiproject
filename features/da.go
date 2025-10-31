@@ -4,7 +4,6 @@ import (
 	"cli-top/debug"
 	"cli-top/helpers"
 	"cli-top/types"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -24,72 +23,6 @@ const (
 	DACustomTableSelector = "table.customTable"
 	DACellSelector        = "td"
 )
-
-// FetchPendingAssignments returns a list of outstanding DA events for the latest semester.
-func FetchPendingAssignments(regNo string, cookies types.Cookies) ([]types.AssignmentSummary, error) {
-	if !helpers.ValidateLogin(cookies) {
-		return nil, errors.New("invalid login session")
-	}
-
-	semesters, err := helpers.GetSemDetails(cookies, regNo)
-	if err != nil {
-		semesters, err = helpers.GetSemDetailsBackup(cookies, regNo)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if len(semesters) == 0 {
-		return nil, errors.New("no semesters available")
-	}
-
-	var subjects []types.DAsubject
-	for i := 0; i < len(semesters); i++ {
-		subjects = getAllSubs(regNo, cookies, semesters[i].SemID)
-		if len(subjects) > 0 {
-			break
-		}
-	}
-
-	if len(subjects) == 0 {
-		return []types.AssignmentSummary{}, nil
-	}
-
-	var assignments []types.AssignmentSummary
-
-	for _, subject := range subjects {
-		doc := getOneSub(regNo, cookies, subject.ID)
-		if doc == nil {
-			continue
-		}
-
-		_, subjectAssignments := pendingDAs(doc, subject)
-		for _, da := range subjectAssignments.DAs {
-			pendingUpload := strings.EqualFold(da.Last_upload, "n/a") ||
-				strings.EqualFold(da.Last_upload, "file not uploaded") ||
-				strings.TrimSpace(da.Last_upload) == ""
-
-			if !pendingUpload {
-				continue
-			}
-
-			assignment := types.AssignmentSummary{
-				CourseCode: subject.Code,
-				CourseName: subject.Name,
-				Title:      da.Title,
-				Status:     da.Last_upload,
-				Link:       da.DownloadLink,
-			}
-
-			if !da.DueDate.IsZero() {
-				assignment.DueDate = da.DueDate
-			}
-
-			assignments = append(assignments, assignment)
-		}
-	}
-
-	return assignments, nil
-}
 
 func PrintAllDAs(regNo string, cookies types.Cookies, courseName string) {
 	if !helpers.ValidateLogin(cookies) {

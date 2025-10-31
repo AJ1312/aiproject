@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import google.generativeai as genai
 from config import GOOGLE_API_KEY, GEMINI_MODEL, TEMPERATURE, OUTPUT_DIR
+from utils.formatters import clean_gemini_output
 
 
 def load_vtop_data(file_path):
@@ -136,7 +137,7 @@ Keep the tone encouraging but honest. Focus on actionable advice that a VIT stud
             }
         )
         
-        return response.text
+        return clean_gemini_output(response.text)
     
     except Exception as e:
         return f"❌ Error generating insights: {str(e)}"

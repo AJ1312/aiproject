@@ -140,7 +140,7 @@ def run_attendance_calculator(vtop_data: Dict) -> List[Dict]:
         course_code = record.get("course_code", "")
         course_name = record.get("course_name", "")
         attended = record.get("attended", 0)
-        total = record.get("total", 0)
+        total = record.get("total_classes", record.get("total", 0))
         
         if total == 0:
             continue

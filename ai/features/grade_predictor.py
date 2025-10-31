@@ -1,475 +1,455 @@
-#!/usr/bin/env python3
 """
-Complete Grade Prediction Pipeline
-
-1. Predict missing internal marks (CAT2, DA, Quizzes)
-2. Calculate total internal marks
-3. Predict grades using historical patterns
-4. Show FAT requirements for target grades
+Grade Predictor - Historical Pattern Based
+Uses YOUR actual previous semester performance to predict future grades.
 """
 
 import json
-import sys
-from pathlib import Path
-
-# Simple logger
-def log_info(msg):
-    print(f"ℹ {msg}")
-
-def log_success(msg):
-    print(f"✓ {msg}")
-
-def log_warning(msg):
-    print(f"⚠ {msg}")
+import os
+from typing import Dict, List, Tuple
 
 
-def categorize_subject_type(course_code: str, course_name: str) -> str:
-    """Categorize subject into types."""
-    course_name_upper = course_name.upper()
-    course_code_upper = course_code.upper()
-    
-    # LAB subjects - ends with P or contains Lab
-    if course_code.endswith('P') or 'LAB' in course_name_upper:
-        return "LAB"
-    
-    # SOFT_SKILL subjects - BSTS codes or specific names
-    if (course_code.startswith('BSTS') or 
-        'QUALITATIVE' in course_name_upper or
-        'SOFT SKILL' in course_name_upper or
-        'COMPETITIVE CODING' in course_name_upper or
-        'ADVANCED COMPETITIVE CODING' in course_name_upper):
-        return "SOFT_SKILL"
-    
-    # MATH subjects
-    if (course_code.startswith('BMAT') or 
-        'CALCULUS' in course_name_upper or
-        'MATHEMATICS' in course_name_upper or
-        'LINEAR ALGEBRA' in course_name_upper or
-        'STATISTICS' in course_name_upper or
-        'PROBABILITY' in course_name_upper or
-        'DIFFERENTIAL EQUATIONS' in course_name_upper or
-        'DISCRETE MATH' in course_name_upper):
-        return "MATH"
-    
-    # CORE_CSE - CSE fundamental courses (BCSE 1XX, 2XX, 3XX specific ones)
-    core_cse_courses = [
-        'DATA STRUCTURES', 'ALGORITHMS', 'OPERATING SYSTEMS', 'COMPUTER NETWORKS',
-        'DATABASE', 'COMPILER', 'COMPUTER ARCHITECTURE', 'ARTIFICIAL INTELLIGENCE',
-        'CLOUD ARCHITECTURE', 'WEB PROGRAMMING', 'OOP', 'PROGRAMMING'
-    ]
-    
-    if course_code.startswith('BCSE'):
-        for core_keyword in core_cse_courses:
-            if core_keyword in course_name_upper:
-                return "CORE_CSE"
-        
-        # Electives are typically 4XX or specialized courses
-        try:
-            course_num = int(course_code.replace('BCSE', '').replace('P', '').replace('E', '').replace('N', '').replace('L', '')[:3])
-            if course_num >= 400:
-                return "ELECTIVE"
-        except:
-            pass
-    
-    # CORE_ENGG - Engineering fundamentals
-    core_engg_keywords = [
-        'PHYSICS', 'CHEMISTRY', 'ELECTRICAL', 'ELECTRONICS', 'MICROPROCESSOR',
-        'DIGITAL SYSTEMS', 'TECHNICAL ENGLISH', 'ENGINEERING'
-    ]
-    
-    if (course_code.startswith(('BPHY', 'BCHY', 'BEEE', 'BECE', 'BENG')) or
-        any(keyword in course_name_upper for keyword in core_engg_keywords)):
-        return "CORE_ENGG"
-    
-    return "ELECTIVE"
+def load_current_semester_data():
+    """Load current semester data."""
+    data_file = os.path.join(os.path.dirname(__file__), '../current_semester_data.json')
+    with open(data_file, 'r') as f:
+        return json.load(f)
 
 
-def predict_missing_components(course: dict) -> dict:
-    """Predict missing internal components based on available data."""
+def load_historical_patterns():
+    """Load historical grade patterns from previous semesters."""
+    pattern_file = os.path.join(os.path.dirname(__file__), '../data/historical_grade_patterns.json')
+    try:
+        with open(pattern_file, 'r') as f:
+            return json.load(f)
+    except:
+        return None
+
+
+def get_grade_from_marks(total_marks: float) -> str:
+    """Convert total marks to grade."""
+    if total_marks >= 90:
+        return 'S'
+    elif total_marks >= 80:
+        return 'A'
+    elif total_marks >= 70:
+        return 'B'
+    elif total_marks >= 60:
+        return 'C'
+    elif total_marks >= 50:
+        return 'D'
+    else:
+        return 'F'
+
+
+def predict_from_historical_patterns(internal_percentage: float, subject_type: str, course_name: str) -> Tuple[Dict, List]:
+    """
+    Predict grade based on historical patterns from similar courses.
+    Uses YOUR actual performance history to make realistic predictions.
     
-    components = course.get('components', [])
+    Args:
+        internal_percentage: Current internal marks percentage (0-100)
+        subject_type: Type of subject (CORE_CSE, MATH, CORE_ENGG, etc.)
+        course_name: Name of the course
     
-    # Extract current marks
+    Returns:
+        (scenarios dict, list of closest historical matches)
+    """
+    historical_data = load_historical_patterns()
+    
+    if not historical_data or 'patterns_by_type' not in historical_data:
+        # Fallback to simple calculation if no historical data
+        return predict_three_scenarios_simple(internal_percentage)
+    
+    # Get courses of the same type from history
+    similar_courses = historical_data['patterns_by_type'].get(subject_type, [])
+    
+    if not similar_courses:
+        # Fallback if no similar courses found
+        return predict_three_scenarios_simple(internal_percentage), []
+    
+    # Find the 3 closest matches by internal percentage
+    sorted_courses = sorted(similar_courses, 
+                           key=lambda x: abs(x['internal_percentage'] - internal_percentage))
+    
+    closest_matches = sorted_courses[:min(3, len(sorted_courses))]  # Top 3 similar courses
+    
+    # Calculate scenarios based on historical patterns
+    scenarios = {}
+    
+    # OPTIMISTIC: Best case from similar internal marks
+    best_match = max(closest_matches, key=lambda x: x['total_marks'])
+    internal_current = (internal_percentage / 100) * 60
+    fat_opt = best_match['total_marks'] - internal_current
+    fat_opt = max(20, min(40, fat_opt))  # Clamp between 20-40
+    
+    scenarios['optimistic'] = {
+        'fat_marks': round(fat_opt, 1),
+        'fat_percentage': round((fat_opt / 40) * 100, 1),
+        'total': round(internal_current + fat_opt, 1),
+        'grade': best_match['grade'],
+        'reference': f"{best_match['course_name'][:30]} ({best_match.get('semester', 'N/A')[:17]})",
+        'historical_internal': best_match['internal_percentage']
+    }
+    
+    # REALISTIC: Average of closest matches
+    avg_fat = sum(c['fat_marks'] for c in closest_matches) / len(closest_matches)
+    avg_total = sum(c['total_marks'] for c in closest_matches) / len(closest_matches)
+    avg_grade_points = sum({'S': 10, 'A': 9, 'B': 8, 'C': 7, 'D': 6, 'E': 5, 'F': 0}.get(c['grade'], 0) 
+                           for c in closest_matches) / len(closest_matches)
+    
+    # Map average grade points back to letter grade
+    if avg_grade_points >= 9.5:
+        avg_grade = 'S'
+    elif avg_grade_points >= 8.5:
+        avg_grade = 'A'
+    elif avg_grade_points >= 7.5:
+        avg_grade = 'B'
+    elif avg_grade_points >= 6.5:
+        avg_grade = 'C'
+    elif avg_grade_points >= 5.5:
+        avg_grade = 'D'
+    else:
+        avg_grade = 'F'
+    
+    scenarios['realistic'] = {
+        'fat_marks': round(avg_fat, 1),
+        'fat_percentage': round((avg_fat / 40) * 100, 1),
+        'total': round(avg_total, 1),
+        'grade': avg_grade,
+        'reference': f"Avg of {len(closest_matches)} similar {subject_type} courses",
+        'historical_internal': round(sum(c['internal_percentage'] for c in closest_matches) / len(closest_matches), 1)
+    }
+    
+    # PESSIMISTIC: Worst case from similar internal marks
+    worst_match = min(closest_matches, key=lambda x: x['total_marks'])
+    fat_pess = worst_match['total_marks'] - internal_current
+    fat_pess = max(20, min(40, fat_pess))
+    
+    scenarios['pessimistic'] = {
+        'fat_marks': round(fat_pess, 1),
+        'fat_percentage': round((fat_pess / 40) * 100, 1),
+        'total': round(internal_current + fat_pess, 1),
+        'grade': worst_match['grade'],
+        'reference': f"{worst_match['course_name'][:30]} ({worst_match.get('semester', 'N/A')[:17]})",
+        'historical_internal': worst_match['internal_percentage']
+    }
+    
+    return scenarios, closest_matches
+
+
+def predict_three_scenarios_simple(internal_percentage: float) -> Tuple[Dict, List]:
+    """Fallback simple prediction when no historical data available."""
+    internal_marks = (internal_percentage / 100) * 60
+    
+    scenarios = {}
+    
+    # OPTIMISTIC
+    if internal_percentage >= 80:
+        opt_fat_marks = 38
+    elif internal_percentage >= 70:
+        opt_fat_marks = 34
+    else:
+        opt_fat_marks = 32
+    
+    scenarios['optimistic'] = {
+        'fat_marks': opt_fat_marks,
+        'fat_percentage': (opt_fat_marks / 40) * 100,
+        'total': internal_marks + opt_fat_marks,
+        'grade': get_grade_from_marks(internal_marks + opt_fat_marks),
+        'reference': 'Calculated estimate (no history)',
+        'historical_internal': internal_percentage
+    }
+    
+    # REALISTIC
+    real_fat_marks = (internal_percentage / 100) * 40
+    scenarios['realistic'] = {
+        'fat_marks': real_fat_marks,
+        'fat_percentage': internal_percentage,
+        'total': internal_marks + real_fat_marks,
+        'grade': get_grade_from_marks(internal_marks + real_fat_marks),
+        'reference': 'Proportional to internal marks',
+        'historical_internal': internal_percentage
+    }
+    
+    # PESSIMISTIC
+    pess_fat_marks = max(20, real_fat_marks * 0.85)
+    scenarios['pessimistic'] = {
+        'fat_marks': pess_fat_marks,
+        'fat_percentage': (pess_fat_marks / 40) * 100,
+        'total': internal_marks + pess_fat_marks,
+        'grade': get_grade_from_marks(internal_marks + pess_fat_marks),
+        'reference': '15% performance drop',
+        'historical_internal': internal_percentage
+    }
+    
+    return scenarios, []
+
+
+def calculate_internal_marks(marks_entry: Dict) -> Dict:
+    """Calculate internal marks breakdown from components with intelligent prediction."""
+    # Extract from components
+    components = marks_entry.get('components', [])
     cat1 = 0
     cat2 = 0
+    cat2_actual = False  # Track if CAT2 is actual data
     da = 0
     quiz1 = 0
     quiz2 = 0
     
     for comp in components:
-        title = comp['title'].upper()
-        if 'CAT' in title or 'CONTINUOUS ASSESSMENT TEST' in title:
-            if 'I' in title or '1' in title:
-                cat1 = comp.get('weightage_mark', 0)
-            elif 'II' in title or '2' in title:
-                cat2 = comp.get('weightage_mark', 0)
-        elif 'DIGITAL ASSIGNMENT' in title or 'DA' in title:
-            da = comp.get('weightage_mark', 0)
-        elif 'QUIZ' in title:
-            if 'I' in title or '1' in title:
-                quiz1 = comp.get('weightage_mark', 0)
-            elif 'II' in title or '2' in title:
-                quiz2 = comp.get('weightage_mark', 0)
+        title = comp.get('title', '').lower()
+        weightage_mark = comp.get('weightage_mark', 0)
+        
+        if 'continuous assessment test' in title or ('cat' in title and 'assessment' in title):
+            # Check for CAT-II first (more specific pattern)
+            if '- ii' in title or 'test ii' in title or title.endswith(' ii'):
+                cat2 = weightage_mark
+                cat2_actual = True
+            elif '- i' in title or 'test i' in title or title.endswith(' i'):
+                cat1 = weightage_mark
+        elif 'quiz' in title:
+            # Check for Quiz II first (more specific pattern)
+            if '- ii' in title or 'quiz ii' in title or title.endswith(' ii'):
+                quiz2 = weightage_mark
+            elif '- i' in title or 'quiz i' in title or (quiz1 == 0):
+                quiz1 = weightage_mark
+        elif 'digital assignment' in title or 'assignment' in title:
+            da = weightage_mark
     
-    predictions = {}
+    # Smart prediction of missing components based on CAT1 performance
+    cat1_percentage = (cat1 / 15) * 100 if cat1 > 0 else 0
     
-    # Predict CAT2 if missing (based on CAT1)
-    if cat1 > 0 and cat2 == 0:
-        if cat1 < 10.5:  # CAT1 < 70%
-            predicted_cat2 = max(cat1 - 0.5, cat1 * 0.95)
+    # Predict CAT2 (typically similar to CAT1, maybe slight drop)
+    if cat2 == 0 and cat1 > 0:
+        cat2 = cat1 * 0.96  # Assume 4% drop
+    
+    # Predict DA based on CAT1 level
+    if da == 0 and cat1 > 0:
+        if cat1_percentage >= 85:
+            da = 9.0  # 90% of 10
+        elif cat1_percentage >= 75:
+            da = 8.5  # 85% of 10
+        elif cat1_percentage >= 65:
+            da = 8.0  # 80% of 10
         else:
-            predicted_cat2 = cat1 + 0.3
-        predictions['CAT2'] = round(min(predicted_cat2, 15), 1)
-    else:
-        predictions['CAT2'] = cat2
+            da = 7.0  # 70% of 10
     
-    # Predict DA if missing
-    if da == 0:
-        if cat1 > 0:
-            cat_percentage = (cat1 / 15) * 100
-            if cat_percentage >= 80:
-                predictions['DA'] = 9.0
-            elif cat_percentage >= 70:
-                predictions['DA'] = 8.5
-            elif cat_percentage >= 60:
-                predictions['DA'] = 8.0
-            else:
-                predictions['DA'] = 7.5
+    # Predict Quiz1 if missing
+    if quiz1 == 0 and cat1 > 0:
+        if cat1_percentage >= 85:
+            quiz1 = 9.0
+        elif cat1_percentage >= 75:
+            quiz1 = 8.0
         else:
-            predictions['DA'] = 8.0
-    else:
-        predictions['DA'] = da
+            quiz1 = 7.5
     
-    # Predict Quizzes (typically easier than CATs)
-    cat_avg = (cat1 + predictions['CAT2']) / 2 if cat1 > 0 else 7.5
-    
-    if quiz1 == 0:
-        predictions['Quiz1'] = round(min(cat_avg + 0.5, 10), 1)
-    else:
-        predictions['Quiz1'] = quiz1
-    
+    # Predict Quiz2 (usually improves from Quiz1)
     if quiz2 == 0:
-        predictions['Quiz2'] = round(min(cat_avg + 0.5, 10), 1)
-    else:
-        predictions['Quiz2'] = quiz2
+        if quiz1 > 0:
+            quiz2 = min(10, quiz1 * 1.1)  # 10% improvement
+        elif cat1 > 0:
+            if cat1_percentage >= 85:
+                quiz2 = 9.5
+            elif cat1_percentage >= 75:
+                quiz2 = 8.5
+            else:
+                quiz2 = 8.0
     
-    # Calculate total internal
-    total_internal = cat1 + predictions['CAT2'] + predictions['DA'] + predictions['Quiz1'] + predictions['Quiz2']
+    total_internal = cat1 + cat2 + da + quiz1 + quiz2
+    internal_percentage = (total_internal / 60) * 100
     
     return {
         'CAT1': cat1,
-        'CAT2': predictions['CAT2'],
-        'DA': predictions['DA'],
-        'Quiz1': predictions['Quiz1'],
-        'Quiz2': predictions['Quiz2'],
-        'total_internal': round(total_internal, 1),
-        'internal_percentage': round((total_internal / 60) * 100, 1)
+        'CAT2': cat2,
+        'CAT2_actual': cat2_actual,
+        'DA': da,
+        'Quiz1': quiz1,
+        'Quiz2': quiz2,
+        'total_internal': total_internal,
+        'internal_percentage': internal_percentage
     }
 
 
-def load_historical_patterns():
-    """Load historical patterns."""
-    patterns_file = Path(__file__).parent.parent / "data" / "historical_grade_patterns.json"
+def get_subject_type(course_code: str, course_name: str) -> str:
+    """Determine subject type from course code."""
+    code_upper = course_code.upper()
+    name_lower = course_name.lower()
     
-    if not patterns_file.exists():
-        return {}
+    # CSE Core subjects
+    if code_upper.startswith('BCSE') and code_upper.endswith('L'):
+        return 'CORE_CSE'
+    elif code_upper.startswith('BCSE') and (code_upper.endswith('E') or code_upper.endswith('P')):
+        return 'CORE_CSE'
     
-    with open(patterns_file, 'r') as f:
-        return json.load(f)
+    # Math subjects
+    elif code_upper.startswith('BMAT'):
+        return 'MATH'
+    
+    # Engineering core
+    elif code_upper.startswith(('BPHY', 'BCHY', 'BEEE', 'BECE', 'BMEE')):
+        return 'CORE_ENGG'
+    
+    # Labs
+    elif code_upper.endswith('P'):
+        return 'LAB'
+    
+    # Soft skills
+    elif code_upper.startswith('BENG') or code_upper.startswith('BSTS') or 'competitive coding' in name_lower:
+        return 'SOFT_SKILL'
+    
+    # Electives
+    elif code_upper.startswith('BCLE') or 'elective' in name_lower:
+        return 'ELECTIVE'
+    
+    return 'UNKNOWN'
 
 
-def predict_grade_from_historical(internal_marks: float, subject_type: str, 
-                                  patterns: dict, is_absolute_grading: bool = False) -> dict:
-    """Predict grade based on historical patterns."""
+def run_grade_predictor(vtop_data=None):
+    """
+    Main grade predictor using historical pattern analysis.
+    Predicts grades based on YOUR actual previous semester performance.
+    """
+    if vtop_data is None:
+        vtop_data = load_current_semester_data()
     
-    internal_percentage = (internal_marks / 60) * 100
+    marks_data = vtop_data.get('marks', [])
     
-    # For LAB and SOFT_SKILL subjects, use absolute grading
-    if is_absolute_grading:
-        if internal_percentage >= 90:
-            predicted = "S"
-        elif internal_percentage >= 80:
-            predicted = "A"
-        elif internal_percentage >= 70:
-            predicted = "B"
-        elif internal_percentage >= 60:
-            predicted = "C"
-        elif internal_percentage >= 50:
-            predicted = "D"
-        else:
-            predicted = "F"
+    if not marks_data:
+        print("❌ No marks data available for prediction.")
+        return []
+    
+    print("=" * 100)
+    print("GRADE PREDICTION - HISTORICAL PATTERN ANALYSIS")
+    print("Based on YOUR actual performance in previous semesters")
+    print("=" * 100)
+    
+    results = []
+    
+    for marks_entry in marks_data:
+        course_code = marks_entry.get('course_code', 'N/A')
+        course_name = marks_entry.get('course_name', course_code)
+        subject_type = get_subject_type(course_code, course_name)
         
-        return {
-            "predicted_grade": predicted,
-            "confidence": 95,
-            "reason": f"{subject_type} - Absolute grading based on {internal_percentage:.1f}% internal",
-            "is_absolute": True
-        }
-    
-    # For other subjects, use historical patterns
-    if subject_type not in patterns.get("pattern_summary", {}):
-        return {
-            "predicted_grade": "Unknown",
-            "confidence": 0,
-            "reason": f"No historical data for {subject_type}",
-            "is_absolute": False
-        }
-    
-    type_patterns = patterns["pattern_summary"][subject_type]["grade_patterns"]
-    
-    # Find closest match
-    closest_grades = []
-    for grade, pattern in type_patterns.items():
-        avg_internal = pattern["avg_internal_percentage"]
-        diff = abs(internal_percentage - avg_internal)
-        closest_grades.append({
-            "grade": grade,
-            "diff": diff,
-            "avg_internal": avg_internal,
-            "count": pattern["count"]
-        })
-    
-    closest_grades.sort(key=lambda x: x["diff"])
-    best_match = closest_grades[0]
-    
-    # Calculate confidence
-    if best_match["diff"] <= 5:
-        confidence = 90
-    elif best_match["diff"] <= 10:
-        confidence = 75
-    elif best_match["diff"] <= 15:
-        confidence = 60
-    else:
-        confidence = 40
-    
-    reason = (f"Based on {best_match['count']} historical {subject_type} courses with "
-              f"{best_match['avg_internal']:.1f}% internal → Grade {best_match['grade']}. "
-              f"Your {internal_percentage:.1f}% is {best_match['diff']:.1f}% away.")
-    
-    return {
-        "predicted_grade": best_match["grade"],
-        "confidence": confidence,
-        "reason": reason,
-        "is_absolute": False,
-        "historical_avg": best_match["avg_internal"]
-    }
-
-
-def calculate_fat_requirements(internal_marks: float) -> dict:
-    """Calculate FAT required for each grade."""
-    fat_reqs = {}
-    grade_thresholds = {"S": 90, "A": 80, "B": 70, "C": 60, "D": 50}
-    
-    for grade, threshold in grade_thresholds.items():
-        fat_needed = threshold - internal_marks
+        # Calculate internal marks
+        marks = calculate_internal_marks(marks_entry)
         
-        if fat_needed <= 0:
-            fat_reqs[grade] = {
-                "fat_needed": 0,
-                "feasibility": "✓ Already achieved",
-                "percentage": 0
-            }
-        elif fat_needed > 40:
-            fat_reqs[grade] = {
-                "fat_needed": fat_needed,
-                "feasibility": "✗ Not achievable",
-                "percentage": 100
-            }
+        # Get three scenarios based on historical patterns
+        result = predict_from_historical_patterns(
+            marks['internal_percentage'], 
+            subject_type, 
+            course_name
+        )
+        if isinstance(result, tuple):
+            scenarios, historical_matches = result
         else:
-            fat_percentage = (fat_needed / 40) * 100
-            if fat_percentage >= 90:
-                feasibility = "Very difficult (>90%)"
-            elif fat_percentage >= 80:
-                feasibility = "Challenging (>80%)"
-            elif fat_percentage >= 70:
-                feasibility = "Moderate"
+            scenarios = result
+            historical_matches = []
+        
+        # Display results for this course
+        print(f"\n📚 {course_name} ({course_code})")
+        print(f"   Category: {subject_type}")
+        print(f"\n   📊 Current Internal Performance:")
+        print(f"      CAT1: {marks['CAT1']:.1f}/15 ({(marks['CAT1']/15)*100:.1f}%)", end="")
+        if marks.get('CAT2_actual', False):
+            # CAT2 is actual data
+            print(f" | CAT2: {marks['CAT2']:.1f}/15 ({(marks['CAT2']/15)*100:.1f}%)")
+        elif marks['CAT2'] != marks['CAT1']:
+            # CAT2 is predicted
+            print(f" | CAT2: {marks['CAT2']:.1f}/15 (predicted)")
+        else:
+            print()
+        print(f"      DA: {marks['DA']:.1f}/10 | Quizzes: {marks['Quiz1']:.1f} + {marks['Quiz2']:.1f} = {marks['Quiz1'] + marks['Quiz2']:.1f}/20")
+        print(f"      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print(f"      Total Internal: {marks['total_internal']:.1f}/60 ({marks['internal_percentage']:.1f}%)")
+        
+        if historical_matches:
+            print(f"\n   🔍 Similar Courses from Your History ({subject_type}):")
+            for i, match in enumerate(historical_matches[:3], 1):
+                print(f"      {i}. {match['course_name'][:40]:<40} | Internal: {match['internal_percentage']:.0f}% | Grade: {match['grade']} | {match.get('semester', 'N/A')[:20]}")
+        
+        print(f"\n   🎯 Grade Predictions (3 Scenarios):")
+        print(f"   ┌{'─'*96}┐")
+        print(f"   │ {'Scenario':<18} │ {'FAT Needed':<18} │ {'Total':<12} │ {'Grade':<8} │ {'Based On':<32} │")
+        print(f"   ├{'─'*96}┤")
+        
+        opt = scenarios['optimistic']
+        print(f"   │ 🌟 Optimistic     │ {opt['fat_marks']:>4.1f}/40 ({opt['fat_percentage']:>5.1f}%) │ {opt['total']:>5.1f}/100   │ {opt['grade']:<8} │ {opt['reference']:<32} │")
+        
+        real = scenarios['realistic']
+        print(f"   │ 📈 Realistic      │ {real['fat_marks']:>4.1f}/40 ({real['fat_percentage']:>5.1f}%) │ {real['total']:>5.1f}/100   │ {real['grade']:<8} │ {real['reference']:<32} │")
+        
+        pess = scenarios['pessimistic']
+        print(f"   │ 📉 Pessimistic    │ {pess['fat_marks']:>4.1f}/40 ({pess['fat_percentage']:>5.1f}%) │ {pess['total']:>5.1f}/100   │ {pess['grade']:<8} │ {pess['reference']:<32} │")
+        print(f"   └{'─'*96}┘")
+        
+        # Contextual advice based on internal percentage
+        internal_pct = marks['internal_percentage']
+        if historical_matches:
+            avg_historical = sum(m['internal_percentage'] for m in historical_matches) / len(historical_matches)
+            if internal_pct > avg_historical + 5:
+                advice = f"✅ Performing {internal_pct - avg_historical:.1f}% BETTER than your historical avg for {subject_type}!"
+            elif internal_pct < avg_historical - 5:
+                advice = f"⚠️  Performing {avg_historical - internal_pct:.1f}% BELOW your historical avg for {subject_type}"
             else:
-                feasibility = "Achievable"
-            
-            fat_reqs[grade] = {
-                "fat_needed": round(fat_needed, 1),
-                "feasibility": feasibility,
-                "percentage": round(fat_percentage, 1)
-            }
-    
-    return fat_reqs
-
-
-def main():
-    """Main pipeline."""
-    
-    if len(sys.argv) < 2:
-        print("Usage: python complete_prediction.py <vtop_data.json>")
-        sys.exit(1)
-    
-    # Load data
-    vtop_file = Path(sys.argv[1])
-    with open(vtop_file, 'r') as f:
-        vtop_data = json.load(f)
-    
-    patterns = load_historical_patterns()
-    
-    print("\n" + "="*90)
-    print("COMPLETE GRADE PREDICTION PIPELINE")
-    print("="*90)
-    print(f"\nStudent: {vtop_data['reg_no']}")
-    print(f"Semester: {vtop_data['semester']}")
-    print(f"Current CGPA: {vtop_data['cgpa']}")
-    print(f"\nAnalyzing {len(vtop_data['marks'])} courses...")
-    
-    results = []
-    
-    for course in vtop_data['marks']:
-        course_code = course['course_code']
-        course_title = course['course_title']
+                advice = f"📊 Consistent with your historical {subject_type} performance"
+        else:
+            if internal_pct >= 85:
+                advice = "✅ Excellent internal performance! Maintain in FAT for S grade"
+            elif internal_pct >= 75:
+                advice = "📚 Good internal performance! Push for A/S grade in FAT"
+            elif internal_pct >= 65:
+                advice = "⚠️  Average performance. Significant FAT effort needed for better grade"
+            else:
+                advice = "🚨 Weak internal marks. Must excel in FAT to improve grade"
         
-        # Step 1: Predict missing marks
-        predicted_marks = predict_missing_components(course)
-        
-        # Step 2: Categorize
-        subject_type = categorize_subject_type(course_code, course_title)
-        is_absolute = subject_type in ["LAB", "SOFT_SKILL"]
-        
-        # Step 3: Predict grade
-        grade_pred = predict_grade_from_historical(
-            predicted_marks['total_internal'],
-            subject_type,
-            patterns,
-            is_absolute
-        )
-        
-        # Step 4: Calculate FAT requirements
-        fat_reqs = calculate_fat_requirements(predicted_marks['total_internal'])
-        
-        results.append({
-            'course_code': course_code,
-            'course_title': course_title,
-            'subject_type': subject_type,
-            'marks': predicted_marks,
-            'grade': grade_pred,
-            'fat_requirements': fat_reqs
-        })
-    
-    # Display results
-    print("\n" + "="*90)
-    print("DETAILED PREDICTIONS")
-    print("="*90)
-    
-    for i, result in enumerate(results, 1):
-        marks = result['marks']
-        grade = result['grade']
-        
-        print(f"\n{i}. {result['course_code']}: {result['course_title']}")
-        print(f"   Type: {result['subject_type']} {'[ABSOLUTE GRADING]' if grade['is_absolute'] else ''}")
-        
-        print(f"\n   Internal Marks Breakdown:")
-        print(f"      CAT1:  {marks['CAT1']:.1f}/15")
-        print(f"      CAT2:  {marks['CAT2']:.1f}/15 {'(predicted)' if marks['CAT2'] != marks['CAT1'] else ''}")
-        print(f"      DA:    {marks['DA']:.1f}/10")
-        print(f"      Quiz1: {marks['Quiz1']:.1f}/10")
-        print(f"      Quiz2: {marks['Quiz2']:.1f}/10")
-        print(f"      ────────────────────")
-        print(f"      Total: {marks['total_internal']:.1f}/60 ({marks['internal_percentage']:.1f}%)")
-        
-        print(f"\n   Predicted Grade: {grade['predicted_grade']} (Confidence: {grade['confidence']}%)")
-        print(f"   {grade['reason']}")
-        
-        if not grade['is_absolute']:
-            print(f"\n   FAT Requirements:")
-            for g in ['S', 'A', 'B', 'C']:
-                req = result['fat_requirements'][g]
-                if req['fat_needed'] > 0 and req['fat_needed'] <= 40:
-                    print(f"      Grade {g}: {req['fat_needed']:.1f}/40 ({req['percentage']:.1f}%) - {req['feasibility']}")
-                elif req['feasibility'] == "✓ Already achieved":
-                    print(f"      Grade {g}: {req['feasibility']}")
-        
-        print(f"   {'-'*86}")
-    
-    # Summary
-    print("\n" + "="*90)
-    print("PREDICTION SUMMARY")
-    print("="*90)
-    
-    grade_counts = {}
-    for result in results:
-        grade = result['grade']['predicted_grade']
-        grade_counts[grade] = grade_counts.get(grade, 0) + 1
-    
-    print("\nPredicted Grade Distribution:")
-    for grade in ['S', 'A', 'B', 'C', 'D', 'F']:
-        if grade in grade_counts:
-            print(f"   {grade}: {grade_counts[grade]} courses")
-    
-    # Calculate expected GPA
-    grade_points = {'S': 10, 'A': 9, 'B': 8, 'C': 7, 'D': 6, 'E': 5, 'F': 0}
-    total_credits = sum(course.get('credits', 3) for course in vtop_data['marks'])
-    predicted_points = sum(
-        grade_points.get(result['grade']['predicted_grade'], 7) * 3
-        for result in results
-    )
-    predicted_gpa = predicted_points / len(results) / 3 * 10 if results else 0
-    
-    print(f"\nPredicted Semester GPA: {predicted_gpa:.2f}")
-    print(f"Current CGPA: {vtop_data['cgpa']}")
-    
-    print("\n" + "="*90)
-
-
-def run_grade_predictor(vtop_data):
-    """
-    Wrapper function for run_all_features.py compatibility.
-    Returns list of prediction results.
-    """
-    results = []
-    
-    # Load historical patterns
-    historical_db_path = Path(__file__).parent.parent / "data" / "historical_grade_patterns.json"
-    
-    if not historical_db_path.exists():
-        log_warning(f"Historical database not found at {historical_db_path}")
-        return results
-    
-    with open(historical_db_path, 'r') as f:
-        historical_data = json.load(f)
-    
-    for course in vtop_data.get('marks', []):
-        course_code = course.get('course_code', '')
-        course_name = course.get('course_name', '')
-        
-        # Predict missing marks
-        marks = predict_missing_components(course)
-        
-        # Categorize subject
-        subject_type = categorize_subject_type(course_code, course_name)
-        
-        # Predict grade
-        grade = predict_grade_from_historical(
-            marks['internal_percentage'],
-            subject_type,
-            historical_data
-        )
-        
-        # Calculate FAT requirements
-        fat_reqs = calculate_fat_requirements(marks['total_internal'])
+        print(f"   💡 {advice}")
+        print(f"   {'─'*98}")
         
         results.append({
             'course_code': course_code,
             'course_name': course_name,
             'subject_type': subject_type,
             'marks': marks,
-            'grade': grade,
-            'fat_requirements': fat_reqs
+            'scenarios': scenarios,
+            'historical_matches': historical_matches,
+            'predicted_grade': scenarios['realistic']['grade']
         })
+    
+    # Summary
+    print(f"\n{'='*100}")
+    print("📊 SUMMARY - REALISTIC SCENARIO")
+    print(f"{'='*100}")
+    print(f"\nTotal Courses Analyzed: {len(results)}")
+    
+    # Grade distribution by category
+    category_grades = {}
+    for r in results:
+        cat = r['subject_type']
+        grade = r['predicted_grade']
+        if cat not in category_grades:
+            category_grades[cat] = []
+        category_grades[cat].append(grade)
+    
+    print(f"\nPredicted Grades by Category:")
+    for cat, grades in sorted(category_grades.items()):
+        grade_str = ', '.join(grades)
+        print(f"   {cat:15s}: {grade_str}")
+    
+    # Overall grade distribution
+    grade_dist = {}
+    for r in results:
+        grade = r['predicted_grade']
+        grade_dist[grade] = grade_dist.get(grade, 0) + 1
+    
+    print(f"\nOverall Grade Distribution (Realistic):")
+    for grade in ['S', 'A', 'B', 'C', 'D', 'F']:
+        if grade in grade_dist:
+            print(f"   Grade {grade}: {grade_dist[grade]} course(s)")
+    
+    print(f"\n{'='*100}\n")
     
     return results
 
 
-def predict_grade_comprehensive(vtop_data):
-    """
-    Alias for run_grade_predictor for backward compatibility.
-    """
-    return run_grade_predictor(vtop_data)
-
-
 if __name__ == "__main__":
-    main()
+    run_grade_predictor()

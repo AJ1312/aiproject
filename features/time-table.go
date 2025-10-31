@@ -5,7 +5,6 @@ import (
 	"cli-top/debug"
 	"cli-top/helpers"
 	types "cli-top/types"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -494,118 +493,6 @@ var schedule = map[string]map[string][]string{
 // 	}
 // }
 
-// FetchTimetableEntries retrieves the student's timetable as structured entries without printing output.
-func FetchTimetableEntries(regNo string, cookies types.Cookies) ([]types.TimetableEntry, error) {
-	if !helpers.ValidateLogin(cookies) {
-		return nil, errors.New("invalid login session")
-	}
-
-	semesters, err := helpers.GetSemDetails(cookies, regNo)
-	if err != nil {
-		return nil, err
-	}
-	if len(semesters) == 0 {
-		return nil, errors.New("no semesters available")
-	}
-
-	url := "https://vtop.vit.ac.in/vtop/processViewTimeTable"
-
-	for i := 0; i < len(semesters); i++ {
-		sem := semesters[i]
-		body, err := helpers.FetchReq(regNo, cookies, url, sem.SemID, "UTC", "POST", "")
-		if err != nil {
-			if debug.Debug {
-				fmt.Printf("error fetching timetable for %s: %v\n", sem.SemName, err)
-			}
-			continue
-		}
-
-		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
-		if err != nil {
-			if debug.Debug {
-				fmt.Printf("error parsing timetable html for %s: %v\n", sem.SemName, err)
-			}
-			continue
-		}
-
-		courseMap := getCourseName(doc)
-		if len(courseMap) == 0 {
-			continue
-		}
-
-		timetable := makeTT(schedule, courseMap)
-		if _, exists := timetable["Saturday"]; !exists {
-			timetable["Saturday"] = []types.Class{}
-		}
-
-		workingSaturdays := fetchWorkingSaturdays(regNo, cookies, sem.SemID, classGroupID)
-		updateTimetableWithWorkingSaturdays(timetable, workingSaturdays)
-
-		entries := flattenTimetableEntries(timetable, courseMap)
-		if len(entries) > 0 {
-			return entries, nil
-		}
-	}
-
-	return []types.TimetableEntry{}, nil
-}
-
-func flattenTimetableEntries(timetable map[string][]types.Class, courseMap map[string]types.SubjectTime) []types.TimetableEntry {
-	dayOrder := map[string]int{
-		"Monday":    0,
-		"Tuesday":   1,
-		"Wednesday": 2,
-		"Thursday":  3,
-		"Friday":    4,
-		"Saturday":  5,
-		"Sunday":    6,
-	}
-
-	entries := make([]types.TimetableEntry, 0)
-	for day, classes := range timetable {
-		for _, class := range classes {
-			entry := types.TimetableEntry{
-				Day:       day,
-				StartTime: class.StartTime,
-				EndTime:   class.EndTime,
-				Course:    class.Subject,
-				Slot:      class.Slot,
-				Venue:     class.Venue,
-			}
-
-			if meta, ok := courseMap[class.Subject]; ok {
-				entry.CourseCode = meta.CourseCode
-				entry.Faculty = meta.Faculty
-			}
-
-			entries = append(entries, entry)
-		}
-	}
-
-	sort.Slice(entries, func(i, j int) bool {
-		leftDay, ok := dayOrder[entries[i].Day]
-		if !ok {
-			leftDay = len(dayOrder)
-		}
-		rightDay, ok := dayOrder[entries[j].Day]
-		if !ok {
-			rightDay = len(dayOrder)
-		}
-		if leftDay != rightDay {
-			return leftDay < rightDay
-		}
-		if entries[i].StartTime != entries[j].StartTime {
-			return entries[i].StartTime < entries[j].StartTime
-		}
-		if entries[i].EndTime != entries[j].EndTime {
-			return entries[i].EndTime < entries[j].EndTime
-		}
-		return entries[i].Course < entries[j].Course
-	})
-
-	return entries
-}
-
 func GetTimeTable(regNo string, cookies types.Cookies, sem_choice int) {
 	if !helpers.ValidateLogin(cookies) {
 		return
@@ -838,12 +725,8 @@ func getCourseName(doc *goquery.Document) map[string]types.SubjectTime {
 			courseCell := row.Find(TimeTableCellSelector).Eq(CourseCellIndex)
 			cellText := strings.TrimSpace(courseCell.Text())
 			parts := strings.SplitN(cellText, " - ", 2)
-			var (
-				courseName string
-				courseCode string
-			)
+			var courseName string
 			if len(parts) == 2 {
-				courseCode = strings.TrimSpace(parts[0])
 				courseName = strings.TrimSpace(parts[1])
 				if idxStart := strings.Index(courseName, "("); idxStart != -1 {
 					idxEnd := strings.Index(courseName, ")")
@@ -856,11 +739,6 @@ func getCourseName(doc *goquery.Document) map[string]types.SubjectTime {
 						}
 					}
 				}
-			} else {
-				courseName = cellText
-			}
-			if courseName == "" {
-				return
 			}
 			slotCell := row.Find(TimeTableCellSelector).Eq(SlotCellIndex)
 			slotText := strings.TrimSpace(slotCell.Text())
@@ -877,9 +755,8 @@ func getCourseName(doc *goquery.Document) map[string]types.SubjectTime {
 				newparts = joinedParts
 			}
 			sub := types.SubjectTime{
-				Slot:       newparts,
-				Venue:      strings.TrimSpace(parts[1]),
-				CourseCode: courseCode,
+				Slot:  newparts,
+				Venue: strings.TrimSpace(parts[1]),
 			}
 			courseMap[courseName] = sub
 		})

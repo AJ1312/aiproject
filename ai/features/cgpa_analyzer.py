@@ -128,30 +128,25 @@ def run_cgpa_analyzer(vtop_data: Dict) -> Dict:
     all_course_grades = {}
     all_courses_data = []
     
-    # Track how many A grades we've added
-    a_grade_count = 0
-    max_a_grades = 2
-    
     for pred in all_predictions:
         course_code = pred.get("course_code")
-        predicted_grade = pred.get("grade", {}).get("predicted_grade", "B")
+        # Use 'predicted_grade' from scenarios['realistic']['grade']
+        scenarios = pred.get("scenarios", {})
+        realistic = scenarios.get("realistic", {})
+        predicted_grade = realistic.get("grade", "B")
+        
         course_name = pred.get("course_name", "")
         
-        # Upgrade up to 2 B grades to A grades for better predictions
-        if predicted_grade == "B" and a_grade_count < max_a_grades:
-            predicted_grade = "A"
-            a_grade_count += 1
-        
-        # Determine credits: P suffix = LAB (1 credit), L suffix = Theory (3 credits)
+        # Determine credits: P suffix = LAB (1 credit), L/E suffix = Theory (3/4 credits)
         if course_code.endswith("P"):
             is_lab = True
             credits = 1
-        elif course_code.endswith("L"):
+        elif course_code.endswith("L") or course_code.endswith("E"):
             is_lab = False
             credits = 3
         else:
             # Fallback: check course name for LAB
-            is_lab = "LAB" in course_name.upper()
+            is_lab = "LAB" in course_name.upper() or "Lab" in course_name
             credits = 1 if is_lab else 3
         
         all_course_grades[course_code] = predicted_grade
@@ -214,17 +209,16 @@ def run_cgpa_analyzer(vtop_data: Dict) -> Dict:
     total_grade_points = sum(GRADE_POINTS.get(c["predicted_grade"], 7.0) * c["credits"]
                             for c in all_courses_data)
     total_credits = sum(c["credits"] for c in all_courses_data)
-    total_credits = sum(c["credits"] for c in all_courses_data)
     
     predicted_sgpa = total_grade_points / total_credits if total_credits > 0 else 0
     
-    # Calculate current accumulated points (from previous semesters)
-    # Assuming average credits per semester
-    avg_credits_per_sem = total_credits  # Use current semester as reference
-    current_total_points = cgpa * (semester_count * avg_credits_per_sem) if semester_count > 0 else 0
-    
     # Calculate new CGPA including this semester
-    total_accumulated_credits = (semester_count * avg_credits_per_sem) + total_credits
+    # Credits earned so far = credits_earned from vtop_data
+    credits_earned = vtop_data.get("credits_earned", 84.0)  # From CGPA view
+    current_total_points = cgpa * credits_earned
+    
+    # New CGPA = (old points + new semester points) / (old credits + new credits)
+    total_accumulated_credits = credits_earned + total_credits
     predicted_cgpa = (current_total_points + total_grade_points) / total_accumulated_credits if total_accumulated_credits > 0 else predicted_sgpa
     cgpa_delta = predicted_cgpa - cgpa
     
@@ -287,7 +281,8 @@ def run_cgpa_analyzer(vtop_data: Dict) -> Dict:
                 credits = course["credits"]
                 course_type = "LAB" if course["is_lab"] else "Theory"
                 weighted_points = grade_points * credits
-                lines.append(f"    • {course['course_code']}: Grade {grade} ({grade_points} pts × {credits} credits = {weighted_points:.1f}) [{course_type}]")
+                course_display = course.get('course_name', course['course_code'])
+                lines.append(f"    • {course_display}: Grade {grade} ({grade_points} pts × {credits} credits = {weighted_points:.1f}) [{course_type}]")
     
     if incomplete_courses:
         lines.append("")
@@ -299,7 +294,8 @@ def run_cgpa_analyzer(vtop_data: Dict) -> Dict:
                 credits = course["credits"]
                 course_type = "LAB" if course["is_lab"] else "Theory"
                 weighted_points = grade_points * credits
-                lines.append(f"    • {course['course_code']}: Grade {grade} ({grade_points} pts × {credits} credits = {weighted_points:.1f}) [{course_type}]")
+                course_display = course.get('course_name', course['course_code'])
+                lines.append(f"    • {course_display}: Grade {grade} ({grade_points} pts × {credits} credits = {weighted_points:.1f}) [{course_type}]")
     
     # Show alternative scenarios only if there are incomplete courses
     if incomplete_courses and len(result["scenarios"]) > 1:
