@@ -239,7 +239,23 @@ async function runVTOP(cmd) {
 
 // Run AI
 async function runAI(feature) {
-    // Run directly - no export needed, uses current_semester_data.json
+    // Check if it's the smart predictor
+    if (feature === 'smart_predictor') {
+        return await runSmartPredictor();
+    }
+    
+    // Show fetching live data message
+    outputBody.innerHTML = `
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>🔄 Fetching live VTOP data...</p>
+            <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                This may take 30-60 seconds
+            </p>
+        </div>
+    `;
+    
+    // Run directly with live data
     const res = await fetch(`${API_URL}/ai-features`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -249,6 +265,52 @@ async function runAI(feature) {
     const data = await res.json();
     if (data.success) displayOutput(data.output);
     else throw new Error(data.error || 'AI failed');
+}
+
+// Run Smart Predictor
+async function runSmartPredictor() {
+    // Show detailed progress
+    outputBody.innerHTML = `
+        <div class="loading">
+            <div class="spinner"></div>
+            <h3 style="margin-bottom: 20px;">🚀 Smart Grade Predictor</h3>
+            <div style="text-align: left; max-width: 600px; margin: 0 auto;">
+                <p style="margin: 10px 0;">
+                    <span style="display: inline-block; width: 30px;">⏳</span>
+                    Step 1: Fetching live VTOP data...
+                </p>
+                <p style="margin: 10px 0; color: #999;">
+                    <span style="display: inline-block; width: 30px;">⏳</span>
+                    Step 2: Parsing all semesters...
+                </p>
+                <p style="margin: 10px 0; color: #999;">
+                    <span style="display: inline-block; width: 30px;">⏳</span>
+                    Step 3: Gemini AI categorization...
+                </p>
+                <p style="margin: 10px 0; color: #999;">
+                    <span style="display: inline-block; width: 30px;">⏳</span>
+                    Step 4: Predicting grades...
+                </p>
+                <p style="margin: 10px 0; color: #999;">
+                    <span style="display: inline-block; width: 30px;">⏳</span>
+                    Step 5: Generating report...
+                </p>
+            </div>
+            <p style="font-size: 14px; color: #ff9800; margin-top: 20px;">
+                ⚡ This uses live data and AI - may take 1-2 minutes
+            </p>
+        </div>
+    `;
+    
+    const res = await fetch(`${API_URL}/smart-grade-predictor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    });
+    
+    const data = await res.json();
+    if (data.success) displayOutput(data.output);
+    else throw new Error(data.error || 'Smart predictor failed');
 }
 
 // Run Gemini

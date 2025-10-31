@@ -171,7 +171,7 @@ def static_files(path):
 @app.route('/api/login', methods=['POST'])
 def login():
     """
-    Login to VTOP and store credentials
+    Login to VTOP and store credentials permanently
     Request: {"username": "...", "password": "..."}
     """
     try:
@@ -182,44 +182,49 @@ def login():
         if not username or not password:
             return jsonify({'error': 'Username and password required'}), 400
         
-        # Create credentials file
-        creds_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
-        creds_data = {
-            'username': username,
-            'password': password
-        }
-        json.dump(creds_data, creds_file)
-        creds_file.close()
+        # Use stdin to provide credentials to CLI-TOP
+        print(f"🔐 Attempting login for user: {username}")
         
-        # Test login with a simple command
+        # Test login with profile command - this will create the config file
         try:
+            # Provide username and password via stdin
+            input_data = f"{username}\n{password}\n"
+            
             result = run_subprocess_safe(
-                [str(CLI_TOP_PATH), '--creds', creds_file.name, 'profile'],
-                timeout=30
+                [str(CLI_TOP_PATH), 'profile'],
+                input=input_data,
+                timeout=45
             )
             
             if result.returncode == 0:
-                # Success - store session
+                # Check if config file was created
+                if not check_credentials():
+                    return jsonify({'error': 'Login succeeded but credentials not saved'}), 500
+                
+                # Success
                 session_id = os.urandom(16).hex()
-                sessions[session_id] = creds_file.name
+                sessions[session_id] = {'username': username}
+                
+                print(f"✅ Login successful for {username}")
                 
                 return jsonify({
                     'success': True,
                     'session_id': session_id,
-                    'message': 'Login successful!'
+                    'message': 'Login successful! Credentials saved.'
                 })
             else:
-                os.unlink(creds_file.name)
+                error_msg = result.stderr if result.stderr else result.stdout
+                print(f"❌ Login failed: {error_msg[:200]}")
                 return jsonify({
                     'error': 'Login failed. Check your credentials.',
-                    'details': result.stderr
+                    'details': error_msg
                 }), 401
                 
         except subprocess.TimeoutExpired:
-            os.unlink(creds_file.name)
             return jsonify({'error': 'Login timeout. VTOP might be slow.'}), 408
             
     except Exception as e:
+        print(f"❌ Login error: {str(e)}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 
@@ -230,9 +235,6 @@ def logout():
     session_id = data.get('session_id')
     
     if session_id in sessions:
-        creds_file = sessions[session_id]
-        if os.path.exists(creds_file):
-            os.unlink(creds_file)
         del sessions[session_id]
     
     return jsonify({'success': True})
@@ -392,55 +394,26 @@ def ai_export():
 
 @app.route('/api/ai-features', methods=['POST'])
 def run_ai_features():
-    """Run AI features using current_semester_data.json"""
+    """Run AI features using LIVE VTOP data (not cached)"""
     try:
         data = request.json
         feature = data.get('feature', 'all')
         
-        # Use current semester data file directly
+        # Use live data wrapper
         ai_path = Path(__file__).parent.parent / 'ai'
-        data_file = ai_path / 'current_semester_data.json'
+        wrapper_script = ai_path / 'live_data_wrapper.py'
         
-        if not data_file.exists():
-            return jsonify({'error': 'current_semester_data.json not found. Please run parse_current_semester.py'}), 404
+        if not wrapper_script.exists():
+            return jsonify({'error': 'Live data wrapper not found'}), 404
         
-        # Determine which feature to run
-        if feature == 'all':
-            script = ai_path / 'run_all_features.py'
-            cmd = ['python3', str(script), str(data_file)]
-        else:
-            # Map feature names to script names
-            feature_map = {
-                'attendance_calculator': 'attendance_calculator.py',
-                'grade_predictor': 'grade_predictor.py',
-                'cgpa_analyzer': 'cgpa_analyzer.py',
-                'attendance_recovery': 'attendance_recovery.py',
-                'exam_readiness': 'exam_readiness.py',
-                'study_allocator': 'study_allocator.py',
-                'performance_analyzer': 'performance_analyzer.py',
-                'target_planner': 'target_planner.py',
-                'weakness_identifier': 'weakness_identifier.py'
-            }
-            
-            script_name = feature_map.get(feature)
-            if not script_name:
-                return jsonify({'error': f'Unknown feature: {feature}'}), 404
-            
-            script = ai_path / 'features' / script_name
-            cmd = ['python3', str(script), str(data_file)]
+        print(f"🤖 Running AI feature with LIVE data: {feature}")
         
-        if not script.exists():
-            return jsonify({'error': f'Feature not found: {script}'}), 404
-        
-        # Run feature
-        print(f"🤖 Running AI feature: {feature}")
-        print(f"Script path: {script}")
-        print(f"Data file: {data_file}")
-        print(f"Running command: {' '.join(cmd)}")
+        # Run feature with live data
+        cmd = ['python3', str(wrapper_script), feature]
         
         result = run_subprocess_safe(
             cmd,
-            timeout=60,
+            timeout=90,
             cwd=str(ai_path)
         )
         
@@ -461,7 +434,51 @@ def run_ai_features():
         })
         
     except Exception as e:
+        print(f"❌ AI feature error: {str(e)}")
         return jsonify({'error': f'AI feature error: {str(e)}'}), 500
+
+
+@app.route('/api/smart-grade-predictor', methods=['POST'])
+def smart_grade_predictor():
+    """
+    Run smart grade predictor with live data, Gemini categorization,
+    and progress updates streamed to user
+    """
+    try:
+        ai_path = Path(__file__).parent.parent / 'ai'
+        script = ai_path / 'features' / 'smart_grade_predictor.py'
+        
+        if not script.exists():
+            return jsonify({'error': 'Smart grade predictor not found'}), 404
+        
+        print(f"🚀 Running smart grade predictor with live data + Gemini...")
+        
+        # Run with progress output
+        result = run_subprocess_safe(
+            ['python3', str(script)],
+            timeout=180,  # Longer timeout for Gemini API calls
+            cwd=str(ai_path)
+        )
+        
+        if result.returncode == 0:
+            return jsonify({
+                'success': True,
+                'output': format_cli_output(result.stdout),
+                'raw_output': result.stdout
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Smart predictor failed',
+                'output': format_cli_output(result.stderr if result.stderr else result.stdout),
+                'details': result.stderr
+            }), 500
+            
+    except subprocess.TimeoutExpired:
+        return jsonify({'error': 'Smart predictor timeout (may be waiting for Gemini API)'}), 408
+    except Exception as e:
+        print(f"❌ Smart predictor error: {str(e)}")
+        return jsonify({'error': f'Smart predictor error: {str(e)}'}), 500
 
 
 @app.route('/api/gemini-features', methods=['POST'])
